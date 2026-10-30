@@ -1,0 +1,17 @@
+# DisplayPort plug grasp file for Flexiv Grav (isaac_grasp format).
+
+format: isaac_grasp
+format_version: 1.0
+
+object_frame: /displayport_cable_frame
+gripper_frame: /grav_base_link
+
+grasps:
+   grasp_0:
+      confidence: 1.0
+      position: [0.0, 0.0, 0.199]
+      orientation: {w: 0.0, xyz: [0.7071067811865476, 0.7071067811865476, 0.0]}
+      cspace_position:
+         finger_joint: 0.033379748463630676
+      pregrasp_cspace_position:
+         finger_joint: 0.3

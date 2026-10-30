@@ -72,7 +72,12 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'workflow_type',
-            choices=['POSE_TO_POSE', 'PICK_AND_PLACE', 'OBJECT_FOLLOWING', 'GEAR_ASSEMBLY'],
+            choices=[
+                'POSE_TO_POSE',
+                'PICK_AND_PLACE',
+                'OBJECT_FOLLOWING',
+                'DISPLAYPORT_CABLE_INSERTION',
+            ],
             description='Type of workflow to run the sim based manipulator pipeline on',
         )
     ]

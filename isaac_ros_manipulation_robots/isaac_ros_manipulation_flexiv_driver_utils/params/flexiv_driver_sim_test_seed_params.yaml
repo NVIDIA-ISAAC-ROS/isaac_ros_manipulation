@@ -1,5 +1,5 @@
 # Seed params for isaac_ros_manipulation_flexiv_driver_utils sim launch tests.
-# Kept aligned with isaac_ros_manipulation_bringup/params/sim_launch_params.yaml
+# Kept aligned with the isaac_ros_manipulation_bringup simulation launch params
 # except keys that reference isaac_ros_manipulation_bringup (not installed under
 # minimal colcon/Jenkins package selections). RViz is unused (tests run headless).
 
@@ -52,34 +52,6 @@ use_pose_from_rviz: 'false'
 
 # Time sync params to sync joint states and images
 time_sync_slop: 0.5
-
-gear_assembly_model_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/
-gear_assembly_model_file_name: model_gripper_140.pt
-gear_assembly_policy_alpha: 0.0
-gear_assembly_observation_topic: /gear_assembly/observation
-gear_assembly_joint_state_topic: /isaac_joint_states
-gear_assembly_target_joint_state_topic: /isaac_joint_commands
-gear_assembly_target_tcp_state_topic: /gear_assembly/target_tcp_state
-gear_assembly_gear_insertion_request_topic: /gear_assembly/gear_insertion_request
-gear_assembly_goal_pose_topic: /gear_assembly/goal_pose
-gear_assembly_gear_insertion_status_topic: /gear_assembly/gear_insertion_status
-gear_assembly_ros_bag_folder_path: $ISAAC_ROS_WS/rl_inference_policy
-gear_assembly_enable_recording: 'false'
-gear_assembly_use_joint_state_planner: 'true'
-gear_assembly_peg_stand_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_base/gear_base.obj
-gear_assembly_gear_large_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_large/gear_large.obj
-gear_assembly_gear_small_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_small/gear_small.obj
-gear_assembly_gear_medium_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_medium/gear_medium.obj
-gear_assembly_use_ground_truth_pose_in_sim: 'true'
-gear_assembly_verify_pose_estimation_accuracy: 'false'
-gear_assembly_run_rl_inference: 'true'
-gear_assembly_output_dir: $ISAAC_ROS_WS/gear_assembly_outputs
-gear_assembly_offset_for_place_pose: 0.32
-gear_assembly_offset_for_insertion_pose: 0.0
-gear_assembly_place_pose_z_rotation_deg: 180.0
-gear_assembly_post_insertion_gripper_rotation_deg: 0.0
-gear_assembly_timeout_for_insertion_action_call: 7.0  # in seconds
-gear_assembly_model_frequency: 30.0  # in Hz
 
 # Perception
 depth_type: ISAAC_SIM
@@ -156,7 +128,7 @@ enable_system_wide_profiling: 'false'
 # MPS parameters
 enable_cuda_mps: 'false'
 cuda_mps_pipe_directory: $ISAAC_ROS_WS/mps_pipe_dir  # Create this directory before running if mps = 'true'
-# For nvblox, foundation pose, rtdetr, dope, nitros type adaptation
+# For nvblox, foundation pose, RT-DETR, and DOPE
 cuda_mps_active_thread_percentage_container: '100'
 cuda_mps_client_priority_container: '1'
 # For robot segmenter

@@ -62,10 +62,14 @@ class EndEffectorMarker:
             scale=0.2
         )
 
-        self.marker_type = Marker.MESH_RESOURCE
-        if mesh_resource_uri is None or mesh_resource_uri == '':
-            self.marker_type = Marker.CUBE
-            node.get_logger().warn('Mesh resource uri is empty, using cube marker')
+        # RViz 15.2.6 dereferences a null resource-retriever owner when a
+        # MESH_RESOURCE is embedded in an InteractiveMarkerControl.
+        # Using CUBE type until upstream RViz bug is fixed.
+        self.marker_type = Marker.CUBE
+        if mesh_resource_uri:
+            node.get_logger().warning(
+                'RViz cannot safely render mesh resources in interactive markers; '
+                'using a cube marker')
 
         self._interactive_marker_server = InteractiveMarkerServer(self._node, marker_namespace)
         self.make_gripper_marker()
@@ -81,9 +85,10 @@ class EndEffectorMarker:
         # gripper
         marker = Marker()
         marker.type = self.marker_type
-        marker.mesh_use_embedded_materials = True
         marker.color = self._marker_prop.color
-        marker.mesh_resource = self._marker_prop.mesh_resource_uri
+        marker.scale.x = self._marker_prop.scale * 0.5
+        marker.scale.y = self._marker_prop.scale * 0.5
+        marker.scale.z = self._marker_prop.scale * 0.5
         control = InteractiveMarkerControl()
         control.always_visible = True
         control.markers = [marker]

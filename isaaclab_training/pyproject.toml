@@ -1,0 +1,111 @@
+[build-system]
+requires = ["uv_build>=0.12.6,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "isaaclab-training"
+version = "0.1.0"
+description = "Generic Isaac Lab downstream training tasks and export tools"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "isaaclab",
+  "pyyaml",
+]
+
+[project.entry-points."isaaclab.tasks"]
+training-tasks = "isaaclab_training.tasks"
+
+[project.scripts]
+isaaclab-training-play-policy-io = "isaaclab_training.cli.play_policy_io:main"
+isaaclab-training-export = "isaaclab_training.cli.export_policy:main"
+isaaclab-training-validate-displayport = "isaaclab_training.cli.displayport_training_validation:main"
+
+[dependency-groups]
+dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
+docs = [
+  "myst-parser>=4.0",
+  "sphinx>=8.2,<9",
+  "sphinx-book-theme>=1.1",
+  "sphinx-copybutton>=0.5",
+  "sphinx-design>=0.6",
+]
+leapp = ["leapp==0.6.1"]
+sim = ["isaacsim[all,extscache]==6.1.0.0"]
+
+[tool.uv.sources]
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "a8b4da3c29ae528b39d4b3c9444d782ce58d886d", subdirectory = "tools/wheel_builder" }
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+torchvision = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+torchaudio = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+
+[[tool.uv.index]]
+url = "https://pypi.nvidia.com"
+explicit = false
+
+[[tool.uv.index]]
+name = "pypi-public"
+url = "https://pypi.org/simple"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
+index-strategy = "unsafe-best-match"
+prerelease = "allow"
+override-dependencies = [
+  "mujoco>=3.12.0,<3.13.dev0",
+  "mujoco-warp>=3.12.0,<3.13.dev0",
+  "newton[sim]==1.6.0",
+  "newton-usd-schemas>=0.5.0",
+  "torch==2.11.0",
+  "torchvision==0.26.0",
+  "torchaudio==2.11.0",
+]
+
+[tool.uv.build-backend]
+module-name = "isaaclab_training"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+  # Isaac Lab config classes commonly use class attributes to declare config fields.
+  "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/isaaclab_training/cli/play_policy_io.py" = ["B905", "I001"]
+"src/isaaclab_training/mdp/**/*.py" = ["B006", "B007", "E402", "E501", "I001", "SIM118"]
+"src/isaaclab_training/mdp/__init__.pyi" = ["F403", "I001"]
+"src/isaaclab_training/tasks/displayport_insertion/**/*.py" = ["B006", "B007", "E402", "E501", "I001", "SIM118"]
+
+[tool.codespell]
+skip = "*.usd,*.usda,*.usdc,*.json,*.onnx,*.pt,*.mp4,*.data,uv.lock,logs"
+ignore-words-list = "leapp,nd"

@@ -18,29 +18,29 @@
 set -ex
 
 if [ -z "$ISAAC_ROS_WS" ]; then
-    echo "Error: ISAAC_ROS_WS environment variable is not set" >&2
-    exit 1
+  echo "Error: ISAAC_ROS_WS environment variable is not set" >&2
+  exit 1
 fi
 
 # Check if ENABLE_MANIPULATOR_TESTING is set to 'manual_on_robot'
 if [ "$ENABLE_MANIPULATOR_TESTING" != "manual_on_robot" ]; then
-    echo "Skipping test: ENABLE_MANIPULATOR_TESTING is not set to 'manual_on_robot'"
-    echo "To run this test, set: export ENABLE_MANIPULATOR_TESTING=manual_on_robot"
-    exit 0
+  echo "Skipping test: ENABLE_MANIPULATOR_TESTING is not set to 'manual_on_robot'"
+  echo "To run this test, set: export ENABLE_MANIPULATOR_TESTING=manual_on_robot"
+  exit 0
 fi
 
 export OUTPUT_DIR=$ISAAC_ROS_WS/calibration_validation_dataset_after_calibration
 export ROS_BAG_OUTPUT_DIR=$OUTPUT_DIR/rosbag
 
-mkdir -p $OUTPUT_DIR
-mkdir -p $ROS_BAG_OUTPUT_DIR
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$ROS_BAG_OUTPUT_DIR"
 
-launch_test $ISAAC_ROS_WS/src/isaac_ros_manipulation/isaac_ros_manipulation_bringup/test/record_calibration_rosbag_realsense_test.py
+launch_test "$ISAAC_ROS_WS"/src/isaac_ros_manipulation/isaac_ros_manipulation_bringup/test/record_calibration_rosbag_realsense_test.py
 
 export CALIBRATION_VALIDATION_OUTPUT_DIR=$OUTPUT_DIR
-export NUM_SQUARE_HEIGHT=9  # THis is for the UR5e target, UR10e target is 12
-export NUM_SQUARE_WIDTH=14  # This is for the UR5e target, UR10e target is 14
+export NUM_SQUARE_HEIGHT=9 # THis is for the UR5e target, UR10e target is 12
+export NUM_SQUARE_WIDTH=14 # This is for the UR5e target, UR10e target is 14
 export LONGER_SIDE_M=0.28  # This is for the UR5e target, UR10e target is 0.36
-export MARKER_SIZE_M=0.015  # This is for the UR5e target, UR10e target is 0.022
+export MARKER_SIZE_M=0.015 # This is for the UR5e target, UR10e target is 0.022
 # Now run the calibration validation test.
-python -m pytest -s $ISAAC_ROS_WS/src/isaac_ros_manipulation/isaac_ros_manipulation_bringup/test/validate_calibration_accuracy_test.py
+python3 -m pytest -s "$ISAAC_ROS_WS"/src/isaac_ros_manipulation/isaac_ros_manipulation_bringup/test/validate_calibration_accuracy_test.py

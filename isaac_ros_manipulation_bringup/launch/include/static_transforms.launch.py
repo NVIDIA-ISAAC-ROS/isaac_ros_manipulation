@@ -20,67 +20,8 @@ from typing import List
 import isaac_ros_launch_utils as lu
 from isaac_ros_launch_utils.all_types import Action, LaunchDescription
 from isaac_ros_manipulation_ros_python_utils.manipulator_types import (
-    CameraType, RobotType, TrackingType,
+    CameraType, TrackingType,
 )
-
-
-ur_gear_assembly_transforms_dict = {
-    'gear_assembly_pose_gear_shaft_small_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_small',
-        'translation': [0.082325, 0.0, -0.0188],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-    'gear_assembly_pose_gear_shaft_medium_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_medium',
-        'translation': [0.036575, 0.0, -0.0188],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-    'gear_assembly_pose_gear_shaft_large_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_large',
-        'translation': [-0.039175, 0.0, -0.0188],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-}
-
-flexiv_gear_assembly_transforms_dict = {
-    'gear_assembly_pose_gear_shaft_small_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_small',
-        'translation': [0.076125, 0.0, 0.0],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-    'gear_assembly_pose_gear_shaft_medium_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_medium',
-        'translation': [0.030375, 0.0, 0.0],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-    'gear_assembly_pose_gear_shaft_large_frame': {
-        'parent_frame': 'gear_assembly_frame',
-        'child_frame': 'gear_shaft_large',
-        'translation': [-0.045375, 0.0, 0.0],
-        'rotation': [0.0, 0.0, 0.0, 1.0]
-    },
-}
-
-gear_assembly_grasp_frame_dict = {
-    'object_pose_grasp_frame': {
-        'parent_frame': 'detected_object1',
-        'child_frame': 'goal_frame',
-        'translation': [0.0, 0.0, -0.015],  # Add only Z offset and no rotation.
-        'rotation': [0, 0, 0, 1],  # [qx, qy ,qz, qw]
-    },
-}
-
-
-def get_gear_assembly_transforms(robot_type: str) -> dict:
-    """Select gear assembly transforms based on the robot type."""
-    if RobotType(robot_type) is RobotType.UR:
-        return ur_gear_assembly_transforms_dict
-    return flexiv_gear_assembly_transforms_dict
 
 
 # Dictionary containing the calibration of various camera setups.
@@ -335,17 +276,7 @@ def add_static_transforms(args: lu.ArgumentContainer) -> List[Action]:
         ]
 
     actions = []
-    gear_assembly_transforms = get_gear_assembly_transforms(str(args.robot_type))
     if camera_type is CameraType.ISAAC_SIM:
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_small_frame']))
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_medium_frame']))
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_large_frame']))
         return actions
 
     transforms = calibrations_dict[args.calibration_name]
@@ -366,16 +297,6 @@ def add_static_transforms(args: lu.ArgumentContainer) -> List[Action]:
     # Get target and grasp frames
     if tracking_type is TrackingType.OBJECT_FOLLOWING:
         actions.append(static_transform_from_dict(transforms['object_pose_grasp_frame']))
-    elif tracking_type is TrackingType.GEAR_ASSEMBLY:
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_small_frame']))
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_medium_frame']))
-        actions.append(
-            static_transform_from_dict(
-                gear_assembly_transforms['gear_assembly_pose_gear_shaft_large_frame']))
     elif tracking_type is TrackingType.POSE_TO_POSE:
         actions.append(static_transform_from_dict(transforms['world_pose_target_frame_1']))
         actions.append(static_transform_from_dict(transforms['world_pose_target_frame_2']))

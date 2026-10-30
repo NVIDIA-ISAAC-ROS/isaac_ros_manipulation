@@ -19,6 +19,8 @@ import os
 import tempfile
 import unittest
 
+from ament_index_python.packages import get_package_share_directory
+
 from isaac_ros_manipulation_ros_python_utils.config import load_yaml_params
 
 
@@ -32,15 +34,11 @@ class TestLoadYamlParams(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        # Create a temporary directory for test files
-        # get the full path to the test directory
-        self.test_file_path = os.path.join(ISAAC_ROS_WS,
-                                           'src',
-                                           'isaac_ros_manipulation',
-                                           'isaac_ros_manipulation_ros_python_utils',
-                                           'test',
-                                           'config',
-                                           'test_manipulator_config_file.yaml')
+        # Locate the declared test data in this target's runfiles.
+        self.test_file_path = os.path.join(
+            os.path.dirname(__file__),
+            'config',
+            'test_manipulator_config_file.yaml')
 
         # create a test dir in tmp folder
         self.test_dir = tempfile.mkdtemp()
@@ -57,7 +55,7 @@ class TestLoadYamlParams(unittest.TestCase):
         # Verify the content
         self.assertEqual(params['camera_type'], 'REALSENSE')
         self.assertEqual(params['num_cameras'], 1)
-        self.assertEqual(params['workflow_type'], 'GEAR_ASSEMBLY')
+        self.assertEqual(params['workflow_type'], 'PICK_AND_PLACE')
         self.assertEqual(params['ur_type'], 'ur10e')
         self.assertEqual(params['gripper_type'], 'robotiq_2f_85')
         self.assertEqual(params['use_sim_time'], 'false')
@@ -100,11 +98,13 @@ class TestLoadYamlParams(unittest.TestCase):
             f'{ISAAC_ROS_WS}/isaac_ros_assets/models/triton')
 
         # also check the scene objects file path
+        expected_scene_file = os.path.join(
+            get_package_share_directory('isaac_ros_manipulation_bringup'),
+            'config', 'scene_objects', 'sim_test_bench',
+            'sim_test_scene_objects.scene')
         self.assertEqual(
-            params['moveit_collision_objects_scene_file'],
-            f'{ISAAC_ROS_WS}/src/isaac_ros_manipulation'
-            '/isaac_ros_manipulation_bringup/config/'
-            'scene_objects/rosie_ur10e_test_bench/rosie_ur10e_test_scene_objects.scene')
+            params['moveit_collision_objects_scene_file'], expected_scene_file)
+        self.assertTrue(os.path.isfile(expected_scene_file))
 
         # boolean check, dont turn to bool, keep it as string.
         self.assertEqual(

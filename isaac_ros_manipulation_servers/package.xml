@@ -19,7 +19,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_manipulation_servers</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>Action servers for Isaac ROS Manipulation Servers</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>

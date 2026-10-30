@@ -62,8 +62,8 @@ def get_calibration_parameters(workflow_type: WorkflowType,
             tracking_type_str = str(TrackingType.POSE_TO_POSE)
         elif workflow_type == WorkflowType.OBJECT_FOLLOWING:
             tracking_type_str = str(TrackingType.OBJECT_FOLLOWING)
-        elif workflow_type == WorkflowType.GEAR_ASSEMBLY:
-            tracking_type_str = str(TrackingType.GEAR_ASSEMBLY)
+        elif workflow_type == WorkflowType.DISPLAYPORT_CABLE_INSERTION:
+            tracking_type_str = str(TrackingType.NONE)
 
         nodes.append(IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -77,22 +77,6 @@ def get_calibration_parameters(workflow_type: WorkflowType,
                 'gripper_type': gripper_type,
                 'robot_type': robot_type,
                 'num_cameras': str(num_cameras)
-            }.items(),
-        ))
-    elif workflow_type == WorkflowType.GEAR_ASSEMBLY:
-        tracking_type_str = str(TrackingType.GEAR_ASSEMBLY)
-        nodes.append(IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [launch_files_include_dir, '/static_transforms.launch.py']
-            ),
-            launch_arguments={
-                'broadcast_world_base_link': 'False',
-                'camera_type': str(camera_type),
-                'tracking_type': tracking_type_str,
-                'calibration_name': setup,
-                'num_cameras': str(num_cameras),
-                'gripper_type': gripper_type,
-                'robot_type': robot_type,
             }.items(),
         ))
     else:
@@ -132,7 +116,10 @@ def get_camera_nodes(num_cameras: str, setup: str,
     # Isaac sim needs no camera nodes, Isaac sim will publish rectified imagers
     camera_nodes = []
 
-    if workflow_type in (WorkflowType.GEAR_ASSEMBLY, WorkflowType.PICK_AND_PLACE):
+    if workflow_type in (
+        WorkflowType.PICK_AND_PLACE,
+        WorkflowType.DISPLAYPORT_CABLE_INSERTION,
+    ):
         # FoundationPose uses RealSense depth in these workflows.
         enable_depth = False
     else:

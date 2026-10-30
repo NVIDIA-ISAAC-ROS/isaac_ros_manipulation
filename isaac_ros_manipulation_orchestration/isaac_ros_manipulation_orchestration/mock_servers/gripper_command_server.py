@@ -19,7 +19,7 @@
 
 import time
 
-from control_msgs.action import GripperCommand
+from control_msgs.action import ParallelGripperCommand
 import rclpy
 from rclpy.action import ActionServer
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -39,13 +39,13 @@ class MockGripperCommandActionServer(Node):
         # Create the action server with the callback group
         self._action_server = ActionServer(
             self,
-            GripperCommand,
+            ParallelGripperCommand,
             '/robotiq_gripper_controller/gripper_cmd',
             self.execute_callback,
             callback_group=self._action_cb_group
         )
 
-        self.get_logger().info('Mock GripperCommand action server started')
+        self.get_logger().info('Mock ParallelGripperCommand action server started')
         self.get_logger().info(
             f'Server is ready to accept requests at '
             f'{self.get_namespace()}/robotiq_gripper_controller/gripper_cmd')
@@ -58,12 +58,22 @@ class MockGripperCommandActionServer(Node):
 
         Returns
         -------
-        GripperCommand.Result
+        ParallelGripperCommand.Result
             The gripper command result
 
         """
-        position = goal_handle.request.command.position
-        max_effort = goal_handle.request.command.max_effort
+        result = ParallelGripperCommand.Result()
+        if not goal_handle.request.command.position:
+            self.get_logger().error(
+                'Aborting gripper command: command.position must contain at least one value')
+            goal_handle.abort()
+            result.reached_goal = False
+            return result
+
+        position = goal_handle.request.command.position[0]
+        max_effort = (
+            goal_handle.request.command.effort[0]
+            if goal_handle.request.command.effort else 0.0)
 
         self.get_logger().info(
             f'Received gripper command: position={position}, max_effort={max_effort}')
@@ -73,19 +83,16 @@ class MockGripperCommandActionServer(Node):
         time.sleep(2.0)
         self.get_logger().info('Finished processing after 2 second')
 
-        # Create the result message
-        result = GripperCommand.Result()
-
         # In this mock server, we'll always succeed and set the position to the requested position
         # In a real system, the gripper might not reach exactly the goal position
-        result.position = position
-        result.effort = max_effort * 0.8  # Simulate using 80% of max effort
+        result.state.position = [position]
+        result.state.effort = [max_effort * 0.8]  # Simulate using 80% of max effort
         result.stalled = False  # Indicate gripper didn't stall
         result.reached_goal = True  # Indicate gripper reached the goal
 
         goal_handle.succeed()
         self.get_logger().info(
-            f'Gripper command executed successfully. Position: {result.position}')
+            f'Gripper command executed successfully. Position: {result.state.position[0]}')
 
         return result
 

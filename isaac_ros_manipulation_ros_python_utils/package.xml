@@ -21,13 +21,14 @@ SPDX-License-Identifier: Apache-2.0
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_manipulation_ros_python_utils</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>Python ROS utilities used across Isaac ROS Manipulation</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>NVIDIA Isaac ROS Software License</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Remo Steiner</author>
 
+  <depend>ament_index_python</depend>
   <depend>control_msgs</depend>
   <depend>controller_manager_msgs</depend>
   <depend>geometry_msgs</depend>
@@ -38,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
   <depend>xacro</depend>
   <depend>moveit_configs_utils</depend>
   <depend>python3-matplotlib</depend>
+  <depend>python3-opencv-python-pip-shim</depend>
   <depend>python3-torch-pip-shim</depend>
 
   <build_depend>isaac_ros_common</build_depend>
@@ -46,6 +48,7 @@ SPDX-License-Identifier: Apache-2.0
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+  <test_depend>ros2cli</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

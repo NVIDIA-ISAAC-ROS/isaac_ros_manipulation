@@ -77,13 +77,12 @@ def launch_setup(context, *args, **kwargs):
         dropped_depth_topic_name = '/rtdetr/depth_dropped'
         drop_node_nodes.append(ComposableNode(
             name='rtdetr_drop_node',
-            package='isaac_ros_nitros_topic_tools',
-            plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
+            package='isaac_ros_topic_tools',
+            plugin='nvidia::isaac_ros::topic_tools::CameraDropNode',
             parameters=[{
                 'X': dropped_fps,
                 'Y': input_fps,
                 'mode': 'mono+depth',
-                'depth_format_string': 'nitros_image_mono16',
                 'input_qos': input_qos,
                 'output_qos': output_qos,
                 'input_queue_size': 1,

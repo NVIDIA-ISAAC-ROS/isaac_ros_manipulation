@@ -51,10 +51,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs) -> List[Node]:
     core_config = CoreConfig(context=context)
     all_nodes = []
     all_nodes.append(get_manipulation_container(core_config))
-    if (
-        core_config.workflow_type == WorkflowType.PICK_AND_PLACE
-        or core_config.workflow_type == WorkflowType.GEAR_ASSEMBLY
-    ):
+    if core_config.workflow_type == WorkflowType.PICK_AND_PLACE:
         all_nodes += get_object_detection_servers(
             camera_config=core_config.camera_config,
             pose_estimation_config=core_config.pose_estimation_config

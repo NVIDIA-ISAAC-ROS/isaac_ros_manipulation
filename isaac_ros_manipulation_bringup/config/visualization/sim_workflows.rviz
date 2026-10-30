@@ -9,9 +9,7 @@ Panels:
         - /Moveit1/PlanningScene1/Scene Robot1
         - /Camera view1/Topic1
         - /TF1/Frames1
-        - /Nvblox1/End Effector Marker1
-        - /Nvblox1/Workspace Bounds1
-        - /Nvblox1/Nvblox Voxels1
+        - /End Effector Marker1
       Splitter Ratio: 0.5
     Tree Height: 229
   - Class: rviz_common/Selection
@@ -53,55 +51,15 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Class: rviz_common/Group
-      Displays:
-        - Class: rviz_default_plugins/InteractiveMarkers
-          Enable Transparency: true
-          Enabled: true
-          Interactive Markers Namespace: /end_effector_marker
-          Name: End Effector Marker
-          Show Axes: false
-          Show Descriptions: true
-          Show Visual Aids: false
-          Value: true
-        - Class: rviz_default_plugins/Marker
-          Enabled: true
-          Name: Workspace Bounds
-          Namespaces:
-            {}
-          Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            Filter size: 10
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /nvblox_node/workspace_bounds
-          Value: true
-        - Class: nvblox_rviz_plugin/NvbloxVoxelBlockLayer
-          Enabled: true
-          Name: Nvblox Voxels
-          Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            Filter size: 10
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /nvblox_node/color_layer
-          Value: true
-        - Class: rviz_default_plugins/MarkerArray
-          Enabled: true
-          Name: Shapes to clear
-          Namespaces:
-            {}
-          Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /nvblox_node/shapes_to_clear
-          Value: true
-      Enabled: false
-      Name: Nvblox
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Interactive Markers Namespace: /end_effector_marker
+      Name: End Effector Marker
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Value: true
     - Class: rviz_common/Group
       Displays:
         - Acceleration_Scaling_Factor: 0.1
@@ -974,14 +932,6 @@ Visualization Manager:
           Value: false
         ft_frame:
           Value: false
-        gear_assembly_frame:
-          Value: false
-        gear_large:
-          Value: false
-        gear_medium:
-          Value: false
-        gear_small:
-          Value: false
         grasp_frame:
           Value: true
         gripper_frame:
@@ -1077,14 +1027,6 @@ Visualization Manager:
                           ft_frame:
                             {}
             front_stereo_camera_left:
-              {}
-            gear_assembly_frame:
-              {}
-            gear_large:
-              {}
-            gear_medium:
-              {}
-            gear_small:
               {}
             soup_can:
               {}

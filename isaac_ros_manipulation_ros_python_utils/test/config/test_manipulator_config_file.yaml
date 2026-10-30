@@ -1,6 +1,6 @@
 camera_type: REALSENSE
 num_cameras: 1
-workflow_type: GEAR_ASSEMBLY
+workflow_type: PICK_AND_PLACE
 
 ur_type: ur10e
 gripper_type: robotiq_2f_85
@@ -10,7 +10,7 @@ robot_ip: 192.56.1.2
 log_level: error
 selection_policy: HIGHEST_SCORE
 # Path to Moveit .scene file with static collision objects to preload
-moveit_collision_objects_scene_file: $(ros2 pkg prefix --share isaac_ros_manipulation_bringup)/config/scene_objects/rosie_ur10e_test_bench/rosie_ur10e_test_scene_objects.scene
+moveit_collision_objects_scene_file: $(ros2 pkg prefix --share isaac_ros_manipulation_bringup)/config/scene_objects/sim_test_bench/sim_test_scene_objects.scene
 
 # Robot description params
 urdf_path: urdf/ur_robotiq_gripper.urdf.xacro
@@ -23,7 +23,7 @@ ros2_controllers_file_path: config/ros2_control_controllers.yaml
 controller_spawner_timeout: 10
 tf_prefix: ''
 runtime_config_package: 'ur_robot_driver'
-initial_joint_controller: 'scaled_joint_trajectory_controller'
+initial_joint_controller: 'joint_trajectory_controller'
 ur_calibration_file_path: config/scene_objects/rosie_ur10e_test_bench/calibration.yaml
 
 enable_nvblox: 'false'
@@ -67,34 +67,6 @@ foundation_pose_refine_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/f
 foundation_pose_texture_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_foundationpose/Mac_and_cheese_0_1/materials/textures/baked_mesh_tex0.png
 foundation_pose_score_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan
 
-gear_assembly_model_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/
-gear_assembly_model_file_name: model_gripper_85.pt
-gear_assembly_policy_alpha: 0.0
-gear_assembly_observation_topic: /gear_assembly/observation
-gear_assembly_joint_state_topic: /joint_states
-gear_assembly_target_joint_state_topic: /target_joint_positions
-gear_assembly_target_tcp_state_topic: /gear_assembly/target_tcp_state
-gear_assembly_gear_insertion_request_topic: /gear_assembly/gear_insertion_request
-gear_assembly_goal_pose_topic: /gear_assembly/goal_pose
-gear_assembly_gear_insertion_status_topic: /gear_assembly/gear_insertion_status
-gear_assembly_ros_bag_folder_path: $ISAAC_ROS_WS/rl_inference_policy
-gear_assembly_enable_recording: 'true'
-gear_assembly_use_joint_state_planner: 'true'
-gear_assembly_peg_stand_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_base/gear_base.obj
-gear_assembly_gear_large_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_large/gear_large.obj
-gear_assembly_gear_small_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_small/gear_small.obj
-gear_assembly_gear_medium_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation_dnn_policy/gear_medium/gear_medium.obj
-gear_assembly_use_ground_truth_pose_in_sim: 'false'
-gear_assembly_verify_pose_estimation_accuracy: 'false'
-gear_assembly_run_rl_inference: 'true'
-gear_assembly_output_dir: '$ISAAC_ROS_WS/gear_assembly_outputs'
-gear_assembly_offset_for_place_pose: 0.30
-gear_assembly_offset_for_insertion_pose: 0.0
-gear_assembly_place_pose_z_rotation_deg: 0.0
-gear_assembly_post_insertion_gripper_rotation_deg: 0.0
-gear_assembly_timeout_for_insertion_action_call: 7.0  # in seconds
-gear_assembly_model_frequency: 30.0  # in Hz
-
 rtdetr_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/synthetica_detr/sdetr_grasp.plan
 object_class_id: '3' # Soup can
 rt_detr_confidence_threshold: '0.5'
@@ -104,7 +76,7 @@ use_ground_truth_pose_in_sim: 'false'
 pick_and_place_planner_retries: 5
 pick_and_place_retry_wait_time: 5.0
 sim_gt_asset_frame_id: 'mac_and_cheese'  # Make sure you add mac and cheese to the Sim scene
-grasps_file_path: config/robotiq_2f_85_grasps_large_gear.yaml
+grasps_file_path: config/robotiq_2f_85_grasps_mac_and_cheese.yaml
 time_dilation_factor: '0.2' # This parameter is used to control the speed of the robot
 
 segment_anything_input_points_topic: input_points
@@ -136,7 +108,7 @@ enable_system_wide_profiling: 'false'
 # MPS parameters
 enable_cuda_mps: 'false'
 cuda_mps_pipe_directory: $ISAAC_ROS_WS/mps_pipe_dir  # Create this directory before running if mps = 'true'
-# For nvblox, foundation pose, rtdetr, dope, nitros type adaptation
+# For nvblox, foundation pose, RT-DETR, and DOPE
 cuda_mps_active_thread_percentage_container: '100'
 cuda_mps_client_priority_container: '1'
 # For robot segmenter

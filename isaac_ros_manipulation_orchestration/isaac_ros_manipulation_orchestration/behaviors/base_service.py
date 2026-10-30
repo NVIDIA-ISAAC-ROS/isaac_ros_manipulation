@@ -210,7 +210,7 @@ class BaseServiceBehavior(py_trees.behaviour.Behaviour):
 
             timeout_msg = ('indefinitely' if self._startup_server_timeout_sec is None
                            else f'for up to {self._startup_server_timeout_sec}s')
-            self.node.get_logger().warn(
+            self.node.get_logger().warning(
                 f'Still waiting for {self._service_name} service '
                 f'({elapsed_time:.0f}s elapsed, waiting {timeout_msg})...')
 

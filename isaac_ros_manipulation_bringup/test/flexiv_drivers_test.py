@@ -22,7 +22,7 @@ Exercises the ``robot_launch_file_path`` plugin in
 ``isaac_ros_manipulation_bringup/launch/drivers.launch.py``: the workflow
 YAML points at ``flexiv_rizon_real_driver.launch.py``, and
 ``drivers.launch.py`` is expected to route to it without any robot-family
-branching in bringup. Mirrors ``ur_drivers_pick_and_place_on_robot_test.py``.
+branching in bringup.
 """
 
 import os
@@ -52,9 +52,9 @@ def generate_test_description():
     params = get_params_from_config_file_set_in_env(RUN_TEST)
 
     # Reference stack: Flexiv Rizon4s + Grav gripper on real hardware
-    # (flexiv_rizon4s_grav_gear_assembly.yaml).
+    # (flexiv_rizon4s_grav_displayport_cable_insertion.yaml).
     override_params = {
-        'workflow_type': 'GEAR_ASSEMBLY',
+        'workflow_type': 'DISPLAYPORT_CABLE_INSERTION',
         'camera_type': 'REALSENSE',
         'headless': 'true',
         'robot_launch_file_path': os.path.join(
@@ -87,7 +87,11 @@ def generate_test_description():
             executable='static_transform_publisher',
             name='static_transform_publisher',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_link']
+            arguments=[
+                '--x', '0', '--y', '0', '--z', '0',
+                '--yaw', '0', '--pitch', '0', '--roll', '0',
+                '--frame-id', 'world', '--child-frame-id', 'base_link',
+            ]
         ))
 
     return FlexivDriverTest.generate_test_description(

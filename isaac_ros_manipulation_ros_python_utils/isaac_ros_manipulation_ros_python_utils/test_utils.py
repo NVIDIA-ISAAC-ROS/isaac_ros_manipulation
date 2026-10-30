@@ -22,30 +22,24 @@ import os
 import pathlib
 import re
 import subprocess
-from threading import Event, Thread
+from threading import Thread
 import time
 import traceback
 from typing import Any, Dict, List, Tuple
 
 from action_msgs.msg import GoalStatus
-from control_msgs.action import GripperCommand
-from controller_manager_msgs.srv import SwitchController
 import cv2
 from cv_bridge import CvBridge
-from geometry_msgs.msg import Point, Pose, PoseStamped, TransformStamped
+from geometry_msgs.msg import Point, Pose, TransformStamped
 from isaac_ros_manipulation_interfaces.action import (
-    AddSegmentationMask, GetObjectPose, GetObjects, Insert, PickAndPlace
+    AddSegmentationMask, GetObjectPose, GetObjects
 )
 from isaac_ros_manipulation_interfaces.srv import AddMeshToObject, ClearObjects
 from isaac_ros_manipulation_ros_python_utils.config import load_yaml_params
-import isaac_ros_manipulation_ros_python_utils.geometry as geometry_utils
 from isaac_ros_test import IsaacROSBaseTest
 from launch_ros.actions import Node
 import matplotlib.pyplot as plt
 import numpy as np
-from rcl_interfaces.msg import Parameter as RCLPYParameter
-from rcl_interfaces.msg import ParameterValue
-from rcl_interfaces.srv import SetParameters
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
@@ -54,7 +48,7 @@ from rclpy.parameter import Parameter
 from rclpy.qos import QoSReliabilityPolicy
 from scipy.spatial.transform import Rotation as R
 from sensor_msgs.msg import CameraInfo, Image, JointState
-from std_msgs.msg import Bool, Float64, Header
+from std_msgs.msg import Header
 import tf2_ros
 import yaml
 
@@ -111,7 +105,7 @@ class QosTestBaseClass(IsaacROSBaseTest):
     def test_qos_settings(self):
         """Test that all QoS settings are RELIABLE when object following is enabled."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
         # Get all available topics
         topics_and_types = self.node.get_topic_names_and_types()
@@ -122,7 +116,7 @@ class QosTestBaseClass(IsaacROSBaseTest):
             if topic_name in self._excluded_topics:
                 continue
 
-            self.node.get_logger().warn(f'Checking topic {topic_name}')
+            self.node.get_logger().warning(f'Checking topic {topic_name}')
             if topic_name in self._check_sensor_data_for_topics_for_only_this_node:
                 qos_profile = self._get_qos_profile(
                     topic_name, self._check_sensor_data_for_topics_for_only_this_node[topic_name])
@@ -134,7 +128,7 @@ class QosTestBaseClass(IsaacROSBaseTest):
             if topic_name in self._topics_with_sensor_data_qos or \
                     topic_name in self._check_sensor_data_for_topics_that_have_publisher:
                 if qos_profile is None:
-                    self.node.get_logger().warn(f'Topic {topic_name} has no qos profile')
+                    self.node.get_logger().warning(f'Topic {topic_name} has no qos profile')
                     continue
                 if qos_profile.reliability != QoSReliabilityPolicy.BEST_EFFORT:
                     should_be_best_effort_but_is_reliable.append(topic_name)
@@ -142,7 +136,7 @@ class QosTestBaseClass(IsaacROSBaseTest):
                     continue
             else:
                 if qos_profile is None:
-                    self.node.get_logger().warn(f'Topic {topic_name} has no qos profile')
+                    self.node.get_logger().warning(f'Topic {topic_name} has no qos profile')
                     continue
                 if qos_profile.reliability != QoSReliabilityPolicy.RELIABLE:
                     should_be_reliable_but_is_best_effort.append(topic_name)
@@ -178,7 +172,7 @@ class QosTestBaseClass(IsaacROSBaseTest):
         if not topic_info:
             topic_info = self.node.get_subscriptions_info_by_topic(topic_name)
             if not topic_info:
-                self.node.get_logger().warn(
+                self.node.get_logger().warning(
                     f'No publishers or subscribers found for topic {topic_name}')
                 return None
 
@@ -189,13 +183,14 @@ class QosTestBaseClass(IsaacROSBaseTest):
             if is_publisher:
                 if info.endpoint_type != 'PUBLISHER':
                     continue
-            self.node.get_logger().warn(f'Topic {topic_name} has info for {idx}: {info}')
+            self.node.get_logger().warning(f'Topic {topic_name} has info for {idx}: {info}')
             # find out if all topics are using the same qos profile
             if qos_profile is None:
                 qos_profile = info.qos_profile
             elif qos_profile.reliability != info.qos_profile.reliability:
-                self.node.get_logger().warn(f'Topic {topic_name} has qos profile:'
-                                            f'{info.qos_profile} but it should be {qos_profile}')
+                self.node.get_logger().warning(
+                    f'Topic {topic_name} has qos profile:'
+                    f'{info.qos_profile} but it should be {qos_profile}')
                 self.fail(f'Topic {topic_name} has qos profile:'
                           f'{info.qos_profile} but it should be {qos_profile}')
 
@@ -235,7 +230,7 @@ class TopicConnectionsGraphTest(IsaacROSBaseTest):
     def test_graph_structure(self):
         """Test that the graph structure matches the expected structure."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
         # Get all nodes and their relationships
         actual_graph = self._build_actual_graph()
@@ -491,9 +486,7 @@ class TopicConnectionsGraphTest(IsaacROSBaseTest):
                 topic = line.strip()
 
                 # Skip certain topics
-                if (topic.startswith('/parameter')
-                    or topic.startswith('/rosout')
-                        or '/nitros/_supported_types' in topic):
+                if topic.startswith('/parameter') or topic.startswith('/rosout'):
                     continue
 
                 topics.append(topic)
@@ -655,7 +648,7 @@ class PoseEstimationPolTest(IsaacROSBaseTest):
     def test_for_pose_estimation_pol(self):
         """Test that verifies that pose estimation are coming in at a certain rate."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
         self.node.get_logger().info('Starting test for pose estimation POL')
         received_messages = {}
@@ -902,7 +895,7 @@ class PoseEstimationServersPolTest(IsaacROSBaseTest):
     def test_for_pose_estimation_servers_pol(self):
         """Test that verifies that pose estimation are coming in at a certain rate."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.setUpClients()
@@ -924,7 +917,7 @@ class PoseEstimationServersPolTest(IsaacROSBaseTest):
                 max_timeout = self._max_timeout_time_for_action_call
                 if (time_node_in_node - start_time).nanoseconds / 1e9 > max_timeout:
                     if self._allow_failure_on_first_try:
-                        self.node.get_logger().warn('Allowing failure on first try')
+                        self.node.get_logger().warning('Allowing failure on first try')
                         timed_out = True
                         break
                     self.fail('Timeout waiting for object detection result.')
@@ -991,7 +984,7 @@ class PoseEstimationServersPolTest(IsaacROSBaseTest):
             json.dump(poses, f)
 
         if failure_count == 1 and self._allow_failure_on_first_try:
-            self.node.get_logger().warn('Allowing failure on first try')
+            self.node.get_logger().warning('Allowing failure on first try')
             return
 
         assert failure_count == 0, f'Pose estimation action failed' \
@@ -1040,7 +1033,7 @@ class IsaacRosManipulationLoadEstimationPolTest(IsaacROSBaseTest):
     def test_performance_under_load(self):
         """Test performance metrics of pose estimation under system load."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.node.get_logger().info('Starting performance monitoring test')
@@ -1767,7 +1760,7 @@ class IsaacRosManipulationRobotSegmentorTest(IsaacROSBaseTest):
                     break
                 except Exception as e:
                     if attempt < max_attempts - 1:
-                        self.node.get_logger().warn(
+                        self.node.get_logger().warning(
                             f'Transform lookup attempt {attempt+1}/{max_attempts} failed, '
                             f'retrying...'
                         )
@@ -1876,7 +1869,7 @@ class IsaacRosManipulationRobotSegmentorTest(IsaacROSBaseTest):
 
         """
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.node.get_logger().info('Starting robot segmentor correctness check')
@@ -2035,7 +2028,7 @@ class ManipulatorRobotSegmentorPolTest(IsaacROSBaseTest):
     def test_robot_segmentor_pol(self):
         """Test to verify robot segmentor is running at required hz."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.node.get_logger().info('Starting robot segmentor correctness check')
@@ -2207,7 +2200,7 @@ class DisableNvbloxTest(IsaacROSBaseTest):
     def test_nvblox_nodes_not_running(self):
         """Verify nvblox and robot segmentor nodes are not running when nvblox is disabled."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         time.sleep(self._node_startup_delay)
@@ -2273,7 +2266,7 @@ class DriverTest(IsaacROSBaseTest):
     def test_driver_nodes_running(self):
         """Verify driver nodes are running."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         time.sleep(self._node_startup_delay)
@@ -2288,7 +2281,7 @@ class DriverTest(IsaacROSBaseTest):
                 'moveit_simple_controller_manager',
                 'controller_manager',
                 'joint_state_broadcaster',
-                'scaled_joint_trajectory_controller',
+                'joint_trajectory_controller',
                 'robot_state_publisher',
                 'joint_parser',
                 'isaac_sim_gripper_action_server',
@@ -2305,8 +2298,7 @@ class DriverTest(IsaacROSBaseTest):
                 'force_torque_sensor_broadcaster',
                 'tcp_pose_broadcaster',
                 'ur_configuration_controller',
-                'scaled_joint_trajectory_controller',
-                'impedance_controller',
+                'joint_trajectory_controller',
                 'controller_stopper',
                 'robot_state_publisher',
             ]
@@ -2362,7 +2354,7 @@ class FlexivDriverTest(IsaacROSBaseTest):
     def test_driver_nodes_running(self):
         """Verify Flexiv driver nodes are running."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         time.sleep(self._node_startup_delay)
@@ -2387,274 +2379,6 @@ class FlexivDriverTest(IsaacROSBaseTest):
                 running_nodes,
                 f'{node} is not running when it should be running'
             )
-
-
-class TestGearPointPublisher(IsaacROSBaseTest):
-    """Node that publishes gear coordinates in round-robin fashion for testing."""
-
-    DEFAULT_NAMESPACE = ''
-
-    _run_test: bool = False
-    _use_sim_time: bool = False
-    _output_dir: str = ''
-    _publish_rate: float = 3.0
-    _num_cycles: int = 1000
-    _publish_sequence: str = 'all'
-    _initial_delay: float = 20.0
-    _monitor_topic_name: str = ''
-    _message_type: Any = None
-    _max_latency_ms: int = 1000
-
-    def setupThingsForSAMTest(self):
-
-        # Initialize gear coordinates, this is hardcoded to be correct for sim cameras
-        self.gear_coordinates = [
-            # Gear base
-            {'x': 1254.0, 'y': 1028.0, 'z': 0.0, 'name': 'gear_base'},
-            # Gear large
-            {'x': 977.0, 'y': 900.0, 'z': 0.0, 'name': 'gear_large'},
-            # Gear medium
-            {'x': 896.0, 'y': 1012.0, 'z': 0.0, 'name': 'gear_medium'},
-            # Gear small
-            {'x': 1105.0, 'y': 1022.0, 'z': 0.0, 'name': 'gear_small'}
-        ]
-
-        # Filter by sequence if specified
-        if self._publish_sequence != 'all':
-            filtered_gears = []
-            if self._publish_sequence == 'base':
-                filtered_gears.append(self.gear_coordinates[0])
-            elif self._publish_sequence == 'large':
-                filtered_gears.append(self.gear_coordinates[1])
-            elif self._publish_sequence == 'medium':
-                filtered_gears.append(self.gear_coordinates[2])
-            elif self._publish_sequence == 'small':
-                filtered_gears.append(self.gear_coordinates[3])
-            elif self._publish_sequence == 'base_large':
-                filtered_gears.append(self.gear_coordinates[0])
-                filtered_gears.append(self.gear_coordinates[1])
-            elif self._publish_sequence == 'base_medium':
-                filtered_gears.append(self.gear_coordinates[0])
-                filtered_gears.append(self.gear_coordinates[2])
-            elif self._publish_sequence == 'base_small':
-                filtered_gears.append(self.gear_coordinates[0])
-                filtered_gears.append(self.gear_coordinates[3])
-
-            # Use filtered gears if any were selected
-            if filtered_gears:
-                self.gear_coordinates = filtered_gears
-
-        self.received_messages = {}
-
-        self.subs = self.create_logging_subscribers(
-            [(self._monitor_topic_name, self._message_type)], self.received_messages,
-            use_namespace_lookup=False,
-            accept_multiple_messages=True)
-
-    def set_gear_mesh_param(self, gear_name: str) -> bool:
-        """
-        Set the mesh_file_path parameter for the foundationpose_node based on the current gear.
-
-        Args
-        ----
-            gear_name: Name of the gear ('gear_base', 'gear_large', etc.)
-
-        Returns
-        -------
-            bool: True if the mesh_file_path parameter was set successfully, False otherwise.
-
-        """
-        mesh_file_name = f'{gear_name}.obj'
-
-        mesh_file_path = f'{ISAAC_ROS_WS}/isaac_ros_assets/' \
-                         f'isaac_ros_manipulation_dnn_policy/{gear_name}/{mesh_file_name}'
-
-        # Create a parameter client
-        param_client = self.node.create_client(
-            SetParameters,
-            '/foundationpose_node/set_parameters'
-        )
-
-        # Wait for the service to be available
-        if not param_client.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().warn(
-                'Service /foundationpose_node/set_parameters not available'
-                ' skipping mesh parameter setting')
-            return False
-
-        # Create parameter request
-        request = SetParameters.Request()
-        parameter = RCLPYParameter()
-        parameter.name = 'mesh_file_path'
-        parameter.value = ParameterValue(
-            string_value=mesh_file_path,
-            type=rclpy.Parameter.Type.STRING.value)
-
-        request.parameters = [parameter]
-
-        # Send request
-        future = param_client.call_async(request)
-
-        rclpy.spin_until_future_complete(self.node, future, timeout_sec=3.0)
-
-        if future.result() is None:
-            self.node.get_logger().warn(f'Failed to set mesh_file_path to {mesh_file_path}')
-            return False
-        self.node.get_logger().debug(f'Successfully set mesh_file_path to {mesh_file_path}')
-        return True
-
-    def test_latency_of_mask_output(self):
-        """Verify that mono8 masks are produced within the latency limit."""
-        if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
-            return
-
-        self.setupThingsForSAMTest()
-
-        test_final_status = False
-        last_publish_time = time.time()
-        received_mask_count = 0
-
-        while not test_final_status:
-
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            if time.time() - last_publish_time > 1.0 / self._publish_rate:
-                self.run_for_each_iteration()
-                last_publish_time = time.time()
-
-            if self.current_cycle >= self._num_cycles and self._num_cycles > 0:
-                test_final_status = True
-
-            # Check the latency of the mask output
-            if len(self.received_messages[self._monitor_topic_name]) > 0:
-                mask_messages = self.received_messages[self._monitor_topic_name]
-                received_mask_count += len(mask_messages)
-
-                for mask_message in mask_messages:
-                    self.assertEqual(
-                        mask_message.encoding,
-                        'mono8',
-                        f'Mask on {self._monitor_topic_name} has encoding '
-                        f'{mask_message.encoding}, expected mono8')
-
-                current_timestamp = mask_messages[-1].header.stamp
-
-                # Get timestamp in milliseconds
-                current_timestamp_ns = current_timestamp.sec * 1e9 + current_timestamp.nanosec
-                current_clock_time = self.node.get_clock().now().to_msg()
-                latency_ns = current_clock_time.sec * 1e9 + \
-                    current_clock_time.nanosec - current_timestamp_ns
-                latency_ms = latency_ns / 1e6
-
-                # Check if latency is higher than max allowed latency
-                if latency_ms > self._max_latency_ms:
-                    err_msg = f'Latency for topic {self._monitor_topic_name} is {latency_ms}'
-                    err_msg += 'milliseconds higher than max allowed latency of'
-                    err_msg += f'{self._max_latency_ms} milliseconds'
-                    self.node.get_logger().error(err_msg)
-                    self.fail(err_msg)
-                else:
-                    self.node.get_logger().info(
-                        f'Latency for topic {self._monitor_topic_name} is {latency_ms} '
-                        'milliseconds'
-                    )
-
-                # Set received message to empty list for next cycle
-                self.received_messages[self._monitor_topic_name] = []
-
-        self.assertGreater(
-            received_mask_count,
-            0,
-            f'No masks received on {self._monitor_topic_name}')
-
-    def run_for_each_iteration(self):
-        # Stop if we've gone through all cycles
-        if self.current_cycle >= self._num_cycles and self._num_cycles > 0:
-            self.node.get_logger().info(
-                f'Completed all {self._num_cycles} cycles, stopping publisher')
-            return
-
-        # Get current gear
-        current_gear = self.gear_coordinates[self.current_gear_idx]
-
-        # Create and publish the current point
-        point_msg = Point()
-        point_msg.x = current_gear['x']
-        point_msg.y = current_gear['y']
-        point_msg.z = current_gear['z']
-
-        self.set_gear_mesh_param(current_gear['name'])
-
-        self.point_publisher.publish(point_msg)
-
-        self.node.get_logger().debug(
-            f"Published {current_gear['name']} point: "
-            f"({current_gear['x']}, {current_gear['y']}, {current_gear['z']}), "
-            f"cycle {self.current_cycle + 1}/{self._num_cycles if self._num_cycles > 0 else 'inf'}"
-        )
-
-        # Move to next gear
-        self.current_gear_idx = (self.current_gear_idx + 1) % len(self.gear_coordinates)
-
-        # If we've gone through all gears, increment cycle counter
-        if self.current_gear_idx == 0:
-            self.current_cycle += 1
-            if self._num_cycles > 0:
-                self.node.get_logger().debug(
-                    f'Completed cycle {self.current_cycle}/{self._num_cycles}'
-                )
-
-
-class IsaacRosManipulationSegmentAnythingPolTest(TestGearPointPublisher):
-    """Test to verify SAM is running correctly and outputting masks at required rate."""
-
-    @classmethod
-    def generate_test_description(cls, run_test: bool,
-                                  use_sim_time: bool,
-                                  nodes: list[Node],
-                                  node_startup_delay: float,
-                                  output_dir: str,
-                                  publish_rate: float,
-                                  num_cycles: int,
-                                  publish_sequence: str,
-                                  initial_delay: float,
-                                  monitor_topic_name: str,
-                                  message_type: Any,
-                                  max_latency_ms: int):
-        cls._run_test = run_test
-        cls._use_sim_time = use_sim_time
-        cls._output_dir = output_dir
-        cls._publish_rate = publish_rate
-        cls._num_cycles = num_cycles
-        cls._publish_sequence = publish_sequence
-        cls._initial_delay = initial_delay
-        cls._monitor_topic_name = monitor_topic_name
-        cls._message_type = message_type
-        cls._max_latency_ms = max_latency_ms
-        return super().generate_test_description(
-            nodes=nodes,
-            node_startup_delay=node_startup_delay,
-        )
-
-    def setUp(self) -> None:
-        """Set up before each test method."""
-        # Create a ROS node for tests with use_sim_time=True
-        self.node = rclpy.create_node(
-            'isaac_ros_base_test_node',
-            namespace=self.generate_namespace()
-        )
-
-        if self._use_sim_time:
-            self.node.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
-
-        self.point_publisher = self.node.create_publisher(
-            Point,
-            '/segment_anything/input_points',  # Topic name aligned with SAM input points
-            10)
-
-        self.current_gear_idx = 0
-        self.current_cycle = 0
 
 
 class IsaacRosManipulationServersPolTest(IsaacROSBaseTest):
@@ -2710,7 +2434,6 @@ class IsaacRosManipulationServersPolTest(IsaacROSBaseTest):
         self._clear_objects_result_received = False
         self._clear_objects_result_future = None
 
-        self._current_gear = None
         self._initial_hint_point_msg = Point()
         if self._initial_hint is not None:
             self._initial_hint_point_msg.x = self._initial_hint['x']
@@ -2955,7 +2678,7 @@ class IsaacRosManipulationServersPolTest(IsaacROSBaseTest):
     def test_for_servers_pol(self):
         """Test that verifies that servers action calls under multiple cycles."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.setUpClients()
@@ -3052,1518 +2775,6 @@ class IsaacRosManipulationServersPolTest(IsaacROSBaseTest):
         cls._initial_hint = initial_hint
         cls._output_dir = output_dir
         cls._mesh_file_path = mesh_file_path
-
-        return super().generate_test_description(
-            nodes=nodes,
-            node_startup_delay=node_startup_delay
-        )
-
-
-class IsaacRosManipulationGearAssemblyPolTest(IsaacROSBaseTest):
-    """
-    Test for Isaac ROS Gear Assembly POL.
-
-    This test will do object pose estimation using SAM with initial guess.
-    It will then update foundation pose to use the mesh.
-    It will then do pick and place action on the object.
-    It will then do RL insertion action on the object.
-    """
-
-    DEFAULT_NAMESPACE = ''
-    _max_timeout_time_for_action_call: float = 10.0
-    _num_cycles: int = 10
-    _ground_truth_sim_prim_name: str = 'gear_large'
-    _use_sim_time: bool = False
-    _mesh_file_paths: List[str] = []
-    _run_test: bool = False
-    _detection_client: ActionClient = None
-    _pose_client: ActionClient = None
-    _segmentation_client: ActionClient = None
-    _add_mesh_client: ActionClient = None
-    _clear_objects_client: ActionClient = None
-    _initial_hint: Dict = None
-    _wait_for_point_topic: bool = False
-    _point_topic_name_as_trigger: str = ''
-    _use_ground_truth_pose_estimation: bool = False
-    _verify_pose_estimation_accuracy: bool = False
-    _run_rl_inference: bool = False
-    _gripper_close_pos: List[float] = None
-    _use_joint_space_planner_api: bool = False
-    _target_joint_state_for_place_pose: JointState = None
-    _publish_only_on_static_tf: bool = False
-    _peg_stand_shaft_offset_for_cumotion: float
-
-    # Variables to track object detection backend, segmentaiton backend and pose estimation backend
-    _is_segment_anything_object_detection_enabled: bool = False
-    _is_segment_anything_segmentation_enabled: bool = False
-    _is_rt_detr_object_detection_enabled: bool = False
-
-    def setUpClients(self) -> None:
-        """Set up before each test method."""
-        self.failure_count = 0
-        self.total_count = 0
-
-        self._detection_client = ActionClient(self.node, GetObjects, '/get_objects')
-        self._get_objects_goal_handle = None
-        self._get_objects_result_received = False
-        self._get_objects_result_future = None
-        self._get_objects_detected_object_id = None
-
-        self._get_object_pose_client = ActionClient(self.node, GetObjectPose, '/get_object_pose')
-        self._get_object_pose_goal_handle = None
-        self._get_object_pose_result_received = False
-        self._get_object_pose_result_future = None
-
-        self._segmentation_client = ActionClient(self.node, AddSegmentationMask,
-                                                 '/add_segmentation_mask')
-        self._segmentation_goal_handle = None
-        self._segmentation_result_received = False
-        self._segmentation_result_future = None
-
-        self._add_mesh_client = self.node.create_client(AddMeshToObject, '/add_mesh_to_object')
-        self._add_mesh_goal_handle = None
-        self._add_mesh_result_received = False
-        self._add_mesh_result_future = None
-
-        self.latest_pose_gotten = None
-
-        self._clear_objects_client = self.node.create_client(ClearObjects, '/clear_objects')
-        self._clear_objects_goal_handle = None
-        self._clear_objects_result_received = False
-        self._clear_objects_result_future = None
-
-        self.object_pose_estimation_result = None
-        self.ground_truth_pose_estimation = None
-
-        # Create tf buffer and listener
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.node)
-
-        self.tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self.node)
-        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self.node)
-
-        self._current_gear = None
-        self._initial_hint_point_msg = Point()
-        if self._initial_hint is not None:
-            self._initial_hint_point_msg.x = self._initial_hint['x']
-            self._initial_hint_point_msg.y = self._initial_hint['y']
-            self._initial_hint_point_msg.z = self._initial_hint['z']
-
-        self._joint_state_publisher = self.node.create_publisher(
-            JointState, '/isaac_joint_commands', 10)
-
-        self._gripper_close_pos_publisher = self.node.create_publisher(
-            Float64, '/gripper_close_pos', 10)
-
-        self._switch_sim_controller_to_rl_policy_publisher = self.node.create_publisher(
-            Bool, '/stop_joint_commands', 10)
-
-        self._sim_joint_commands_publisher = self.node.create_publisher(
-            JointState, '/isaac_joint_commands', 10)
-
-        self._gripper_client = ActionClient(
-            self.node, GripperCommand, '/robotiq_gripper_controller/gripper_cmd')
-        self._gripper_done_event = Event()
-        self._gripper_done_result = False
-
-        self.peg_pose = None
-
-    def _set_controller_states(self,
-                               controllers_to_activate: List[str] = None,
-                               controllers_to_deactivate: List[str] = None,
-                               timeout_sec: float = 10.0) -> bool:
-        """
-        Set the state of ROS2 controllers by activating/deactivating them.
-
-        This function uses the controller manager's switch_controller service to
-        enable and disable controllers.
-
-        Args
-        ----
-            node: ROS2 node to use for service calls
-            controllers_to_activate: List of controller names to activate
-            controllers_to_deactivate: List of controller names to deactivate
-            timeout_sec: Timeout for service call in seconds
-
-        Returns
-        -------
-            bool: True if all controller state changes were successful, False otherwise
-
-        Example
-        -------
-            # Switch from joint trajectory to impedance control
-            success = self._set_controller_states(
-                node=self.node,
-                controllers_to_activate=['impedance_controller'],
-                controllers_to_deactivate=['scaled_joint_trajectory_controller']
-            )
-
-        """
-        if SwitchController is None:
-            self.node.get_logger().error(
-                'controller_manager_msgs not available. '
-                'Install ros-humble-controller-manager-msgs')
-            return False
-
-        if controllers_to_activate is None:
-            controllers_to_activate = []
-        if controllers_to_deactivate is None:
-            controllers_to_deactivate = []
-
-        if not controllers_to_activate and not controllers_to_deactivate:
-            self.node.get_logger().warn('No controllers specified to activate or deactivate')
-            return True
-
-        # Create service client
-        service_name = '/controller_manager/switch_controller'
-        client = self.node.create_client(SwitchController, service_name)
-
-        # Wait for service to be available
-        if not client.wait_for_service(timeout_sec=timeout_sec):
-            self.node.get_logger().error(f'Service {service_name} not available '
-                                         f'after {timeout_sec} seconds')
-            return False
-
-        # Create request
-        request = SwitchController.Request()
-        request.activate_controllers = controllers_to_activate
-        request.deactivate_controllers = controllers_to_deactivate
-        request.strictness = SwitchController.Request.STRICT
-        request.activate_asap = True
-        request.timeout = rclpy.duration.Duration(seconds=timeout_sec).to_msg()
-
-        self.node.get_logger().info(
-            f'Switching controllers - Activating: {controllers_to_activate}, '
-            f'Deactivating: {controllers_to_deactivate}')
-
-        # Send request
-        try:
-            future = client.call_async(request)
-            rclpy.spin_until_future_complete(self.node, future, timeout_sec=timeout_sec)
-
-            if future.result() is None:
-                self.node.get_logger().error('Failed to call controller switch service')
-                return False
-
-            result = future.result()
-            if result.ok:
-                self.node.get_logger().info('Successfully switched controllers')
-                return True
-            else:
-                self.node.get_logger().error('Controller switch failed')
-                return False
-
-        except Exception as e:
-            self.node.get_logger().error(f'Exception during controller switch: {str(e)}')
-            return False
-        finally:
-            self.node.destroy_client(client)
-
-    def switch_to_impedance_control(self, timeout_sec: float = 10.0) -> bool:
-        """
-        Switch from joint trajectory control to impedance control.
-
-        Args
-        ----
-            node: ROS2 node to use for service calls
-            timeout_sec: Timeout for service call in seconds
-
-        Returns
-        -------
-            bool: True if switch was successful, False otherwise
-
-        """
-        return self._set_controller_states(
-            controllers_to_activate=['impedance_controller'],
-            controllers_to_deactivate=['scaled_joint_trajectory_controller'],
-            timeout_sec=timeout_sec
-        )
-
-    def switch_to_trajectory_control(self, timeout_sec: float = 10.0) -> bool:
-        """
-        Switch from impedance control to joint trajectory control.
-
-        Args
-        ----
-            node: ROS2 node to use for service calls
-            timeout_sec: Timeout for service call in seconds
-
-        Returns
-        -------
-            bool: True if switch was successful, False otherwise
-
-        """
-        return self._set_controller_states(
-            controllers_to_activate=['scaled_joint_trajectory_controller'],
-            controllers_to_deactivate=['impedance_controller'],
-            timeout_sec=timeout_sec
-        )
-
-    def _get_transform_from_tf(self, child_frame: str, parent_frame: str) -> TransformStamped:
-        """Get the transform of a child frame relative to a parent frame."""
-        try:
-            transform = self.tf_buffer.lookup_transform(
-                parent_frame, child_frame,
-                rclpy.time.Time(),
-                rclpy.duration.Duration(seconds=1.0)
-            )
-            return transform.transform
-        except Exception as e:
-            raise e
-
-    def trigger_get_objects_goal(self, initial_hint: None | Point = None):
-        """Send a goal to the object detection action server."""
-        self.node.get_logger().info('Waiting for action server for object detection...')
-        if not self._detection_client.wait_for_server(timeout_sec=10.0):
-            self.node.get_logger().error(
-                'Action server for object detection not available after waiting')
-            return
-
-        goal_msg = GetObjects.Goal()
-        if initial_hint is not None:
-            goal_msg.initial_hint = initial_hint
-            goal_msg.use_initial_hint = True
-
-        self.node.get_logger().info('Sending goal to detect objects...')
-        send_goal_future = self._detection_client.send_goal_async(
-            goal_msg, feedback_callback=self.get_objects_feedback_callback)
-        send_goal_future.add_done_callback(self.get_objects_goal_response_callback)
-
-    def get_objects_goal_response_callback(self, future):
-        """Return the goal response from action server."""
-        self._get_objects_goal_handle = future.result()
-        if not self._get_objects_goal_handle.accepted:
-            self.get_logger().error('Goal was rejected by the action server.')
-            return
-
-        self.node.get_logger().info('Goal accepted by the action server.')
-        self._get_objects_result_future = self._get_objects_goal_handle.get_result_async()
-        self._get_objects_result_future.add_done_callback(self.get_objects_result_callback)
-
-    def get_objects_feedback_callback(self, feedback_msg):
-        """Handle feedback from the action server."""
-        self.get_logger().info(f'Feedback: {feedback_msg.feedback}')
-
-    def get_objects_result_callback(self, future):
-        """Handle the result from the action server."""
-        result = future.result().result
-        status = future.result().status
-
-        # Log result to INFO
-        object_ids = []
-        if result.objects:
-            self.node.get_logger().info('Objects detected, the objects id are below:')
-            for object_obj in result.objects:
-                self.node.get_logger().info(f'Object: {object_obj.object_id}')
-                object_ids.append(object_obj.object_id)
-
-        if status == GoalStatus.STATUS_SUCCEEDED and len(result.objects) > 0:
-            self._get_objects_detected_object_id = result.objects[0].object_id
-            self._get_objects_result_received = True
-        else:
-            self.node.get_logger().error(f'Action failed with status: {status}')
-            self._get_objects_result_received = False
-
-    def trigger_get_object_pose_goal(self, object_id):
-        """Send a goal to the object pose estimation action server."""
-        self.node.get_logger().info('Waiting for pose estimation action server...')
-        if not self._get_object_pose_client.wait_for_server(timeout_sec=10.0):
-            self.node.get_logger().error('Pose estimation action server not available')
-            return
-
-        goal_msg = GetObjectPose.Goal()
-        goal_msg.object_id = object_id
-        self.node.get_logger().info(f'Sending goal to estimate pose for object ID: {object_id}')
-        send_goal_future = self._get_object_pose_client.send_goal_async(
-            goal_msg, feedback_callback=self.get_object_pose_feedback_callback)
-        send_goal_future.add_done_callback(self.get_object_pose_goal_response_callback)
-
-    def get_object_pose_goal_response_callback(self, future):
-        """Return the goal response from action server."""
-        self._get_object_pose_goal_handle = future.result()
-        if not self._get_object_pose_goal_handle.accepted:
-            self.node.get_logger().error('Pose estimation goal was rejected by the action server.')
-            return
-
-        self.node.get_logger().info('Pose estimation goal accepted by the action server.')
-        self._get_object_pose_result_future = self._get_object_pose_goal_handle.get_result_async()
-        self._get_object_pose_result_future.add_done_callback(self.get_object_pose_result_callback)
-
-    def get_object_pose_feedback_callback(self, feedback_msg):
-        """Handle feedback from the action server."""
-        self.node.get_logger().info(f'Pose Estimation Feedback: {feedback_msg.feedback}')
-
-    def get_object_pose_result_callback(self, future):
-        """Handle the result from the action server."""
-        status = future.result().status
-        result = future.result().result
-        self.node.get_logger().info(f'Pose estimation result: {result}')
-
-        # Log result to INFO
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.node.get_logger().info('Object pose received for object id')
-            self._get_object_pose_result_received = True
-            self.latest_pose_gotten = result.object_pose
-            # base_T_gear_large_estimated, this is probably Pose
-            # Convert it to ROS transform.
-            self.object_pose_estimation_result = geometry_utils.ros_pose_to_ros_transform(
-                result.object_pose)
-        else:
-            self.node.get_logger().error(f'Pose estimation action failed with status: {status}')
-            self._get_object_pose_result_received = False
-
-    def trigger_get_segmented_object_goal(self, object_id):
-        """Send a goal to the object segmentation action server."""
-        self.node.get_logger().info('Waiting for segmentation action server...')
-        if not self._segmentation_client.wait_for_server(timeout_sec=10.0):
-            self.node.get_logger().error('Segmentation action server not available after waiting')
-            return
-
-        goal_msg = AddSegmentationMask.Goal()
-        goal_msg.object_id = object_id
-        self.node.get_logger().info(f'Sending goal to get segmented object for ID: {object_id}')
-        send_goal_future = self._segmentation_client.send_goal_async(
-            goal_msg, feedback_callback=self.get_segmented_object_feedback_callback)
-        send_goal_future.add_done_callback(self.get_segmented_object_goal_response_callback)
-
-    def get_segmented_object_goal_response_callback(self, future):
-        """Return the goal response from action server."""
-        self._segmentation_goal_handle = future.result()
-        if not self._segmentation_goal_handle.accepted:
-            self.node.get_logger().error('Segmentation goal was rejected by the action server.')
-            return
-
-        self.node.get_logger().info('Segmentation goal accepted by the action server.')
-        self._segmentation_result_future = self._segmentation_goal_handle.get_result_async()
-        self._segmentation_result_future.add_done_callback(
-            self.get_segmented_object_result_callback)
-
-    def get_segmented_object_feedback_callback(self, feedback_msg):
-        """Handle feedback from the action server."""
-        self.node.get_logger().info(f'Segmentation Feedback: {feedback_msg.feedback}')
-
-    def get_segmented_object_result_callback(self, future):
-        """Handle the result from the action server."""
-        result = future.result().result
-        status = future.result().status
-
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.node.get_logger().info(f'Segmented object received: {result}')
-            self._segmentation_result_received = True
-        else:
-            self.node.get_logger().error(f'Segmentation action failed with status: {status}')
-            self._segmentation_result_received = False
-
-    def trigger_add_mesh_to_object_request(self, object_id, mesh_file_path):
-        request = AddMeshToObject.Request()
-        request.object_ids = [object_id]
-        request.mesh_file_paths = [mesh_file_path]
-        future = self._add_mesh_client.call_async(request)
-        return future
-
-    def send_clear_objects_request(self, object_ids=None):
-        request = ClearObjects.Request()
-        if object_ids:
-            request.object_ids = object_ids
-        future = self._clear_objects_client.call_async(request)
-        return future
-
-    def add_mesh_to_object_goal_response_callback(self, future):
-        """Return the goal response from action server."""
-        self._add_mesh_goal_handle = future.result()
-        if not self._add_mesh_goal_handle.accepted:
-            self.node.get_logger().error('Add mesh goal was rejected by the action server.')
-            return
-
-        self.node.get_logger().info('Add mesh goal accepted by the action server.')
-        self._add_mesh_result_future = self._add_mesh_goal_handle.get_result_async()
-        self._add_mesh_result_future.add_done_callback(self.add_mesh_to_object_result_callback)
-
-    def add_mesh_to_object_feedback_callback(self, feedback_msg):
-        """Handle feedback from the action server."""
-        self.node.get_logger().info(f'Add Mesh Feedback: {feedback_msg.feedback}')
-
-    def add_mesh_to_object_result_callback(self, future):
-        """Handle the result from the action server."""
-        result = future.result().result
-        status = future.result().status
-
-        # Log result to INFO
-        self.node.get_logger().info(f'Add mesh result: {result}')
-
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.node.get_logger().info(f'Mesh added to object: {result.object_id}')
-            self._add_mesh_result_received = True
-        else:
-            self.node.get_logger().error(f'Add mesh action failed with status: {status}')
-            self._add_mesh_result_received = False
-
-    def clear_objects_goal_response_callback(self, future):
-        """Return the goal response from action server."""
-        self._clear_objects_goal_handle = future.result()
-        if not self._clear_objects_goal_handle.accepted:
-            self.node.get_logger().error('Clear objects goal was rejected by the action server.')
-            return
-
-        self.node.get_logger().info('Clear objects goal accepted by the action server.')
-        self._clear_objects_result_future = self._clear_objects_goal_handle.get_result_async()
-        self._clear_objects_result_future.add_done_callback(self.clear_objects_result_callback)
-
-    def clear_objects_feedback_callback(self, feedback_msg):
-        """Handle feedback from the action server."""
-        self.node.get_logger().info(f'Clear Objects Feedback: {feedback_msg.feedback}')
-
-    def clear_objects_result_callback(self, future):
-        """Handle the result from the action server."""
-        result = future.result().result
-        status = future.result().status
-
-        self.node.get_logger().info(f'Clear objects result: {result}')
-
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.node.get_logger().info('Objects cleared successfully')
-            self._clear_objects_result_received = True
-        else:
-            self.node.get_logger().error(f'Clear objects action failed with status: {status}')
-            self._clear_objects_result_received = False
-
-    def wait_for_result(self, result_var_name: str, timeout: float = 10.0):
-        start_time = self.node.get_clock().now()
-        while rclpy.ok():
-            # Check the actual instance variable dynamically
-            if result_var_name and getattr(self, result_var_name):
-                return True
-
-            time_now = self.node.get_clock().now()
-            if (time_now - start_time).nanoseconds / 1e9 > timeout:
-                # self.fail(f'Timeout waiting for {result_var_name}')
-                self.failure_count += 1
-                return False
-            self.total_count += 1
-
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-    def wait_for_service_result(self, future, timeout=10.0):
-        start_time = self.node.get_clock().now()
-        while not future.done():
-            time_now = self.node.get_clock().now()
-            if (time_now - start_time).nanoseconds / 1e9 > timeout:
-                self.node.get_logger().error('Timeout waiting for service result')
-                return None
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-        return future.result()
-
-    def set_gear_mesh_param(self, mesh_file_path: str) -> bool:
-        """
-        Set the mesh_file_path parameter for the foundationpose_node based on the current gear.
-
-        Args
-        ----
-            mesh_file_path: Path to the mesh file.
-
-        Returns
-        -------
-            bool: True if the mesh_file_path parameter was set successfully, False otherwise.
-
-        """
-        # Create a parameter client
-        param_client = self.node.create_client(
-            SetParameters,
-            '/foundationpose_node/set_parameters'
-        )
-
-        # Wait for the service to be available
-        if not param_client.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().warn(
-                'Service /foundationpose_node/set_parameters not available'
-                ' skipping mesh parameter setting')
-            return False
-
-        # Create parameter request
-        request = SetParameters.Request()
-        parameter = RCLPYParameter()
-        parameter.name = 'mesh_file_path'
-        parameter.value = ParameterValue(
-            string_value=mesh_file_path,
-            type=rclpy.Parameter.Type.STRING.value)
-
-        request.parameters = [parameter]
-
-        # Send request
-        future = param_client.call_async(request)
-
-        rclpy.spin_until_future_complete(self.node, future, timeout_sec=3.0)
-
-        if future.result() is None:
-            self.node.get_logger().warn(f'Failed to set mesh_file_path to {mesh_file_path}')
-            return False
-        self.node.get_logger().debug(f'Successfully set mesh_file_path to {mesh_file_path}')
-        return True
-
-    def publish_pose_on_tf_static(self, grasp_pose: Pose, parent_frame: str, child_frame: str):
-        """
-        Publish the grasp transform in the world frame.
-
-        Args
-        ----
-            grasp_pose (Pose): The grasp pose to publish.
-            parent_frame (str): The parent frame.
-            child_frame (str): The child frame.
-
-        Returns
-        -------
-            None
-
-        """
-        if grasp_pose is None:
-            self.node.get_logger().error('Grasp pose should never be None')
-            return
-
-        transform_stamped = TransformStamped()
-        transform_stamped.header = Header()
-        transform_stamped.header.stamp = self.node.get_clock().now().to_msg()
-        transform_stamped.header.frame_id = parent_frame
-        transform_stamped.child_frame_id = child_frame
-
-        # Assign the position and orientation from the grasp pose
-        transform_stamped.transform.translation.x = grasp_pose.position.x
-        transform_stamped.transform.translation.y = grasp_pose.position.y
-        transform_stamped.transform.translation.z = grasp_pose.position.z
-        transform_stamped.transform.rotation.x = grasp_pose.orientation.x
-        transform_stamped.transform.rotation.y = grasp_pose.orientation.y
-        transform_stamped.transform.rotation.z = grasp_pose.orientation.z
-        transform_stamped.transform.rotation.w = grasp_pose.orientation.w
-
-        # Publish the transform
-        self.tf_static_broadcaster.sendTransform(transform_stamped)
-        self.node.get_logger().info(f'Published pose frame from {parent_frame} to {child_frame}')
-
-    def publish_pose_on_tf(self, grasp_pose: Pose, parent_frame: str, child_frame: str):
-        """Publish the grasp transform in the world frame."""
-        if grasp_pose is None:
-            self.node.get_logger().error('Grasp pose should never be None')
-            return
-
-        if self._publish_only_on_static_tf:
-            return self.publish_pose_on_tf_static(grasp_pose, parent_frame, child_frame)
-
-        transform_stamped = TransformStamped()
-        transform_stamped.header = Header()
-        transform_stamped.header.stamp = self.node.get_clock().now().to_msg()
-        transform_stamped.header.frame_id = parent_frame
-        transform_stamped.child_frame_id = child_frame
-
-        # Assign the position and orientation from the grasp pose
-        transform_stamped.transform.translation.x = grasp_pose.position.x
-        transform_stamped.transform.translation.y = grasp_pose.position.y
-        transform_stamped.transform.translation.z = grasp_pose.position.z
-        transform_stamped.transform.rotation.x = grasp_pose.orientation.x
-        transform_stamped.transform.rotation.y = grasp_pose.orientation.y
-        transform_stamped.transform.rotation.z = grasp_pose.orientation.z
-        transform_stamped.transform.rotation.w = grasp_pose.orientation.w
-
-        # Publish the transform
-        self.tf_broadcaster.sendTransform(transform_stamped)
-        self.node.get_logger().info(f'Published pose frame from {parent_frame} to {child_frame}')
-
-    def wait_for_point_topic_func(self):
-        """Wait for a message on the point topic."""
-        self.received_messages[self._point_topic_name_as_trigger] = []
-        self.node.get_logger().error('Waiting for point topic input for next step...')
-        while True:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-            if len(self.received_messages[self._point_topic_name_as_trigger]) > 0:
-                self.node.get_logger().info('Point topic received')
-                return
-
-    def do_perception_loop(self, initial_hint: Point, mesh_file_path: str):
-        # First detect object
-        self.trigger_get_objects_goal(initial_hint)
-
-        # Wait for the detection result with a timeout
-        self.wait_for_result('_get_objects_result_received',
-                             timeout=self._max_timeout_time_for_action_call)
-        if not self._get_objects_result_received:
-            self.node.get_logger().error('Object detection action failed')
-            self.failure_count += 1
-            return False
-
-        self.total_count += 1
-        # If segment anything is enabled, we need to get the segmented object first
-        if self._is_segment_anything_segmentation_enabled:
-            self.trigger_get_segmented_object_goal(self._get_objects_detected_object_id)
-            self.wait_for_result('_segmentation_result_received',
-                                 timeout=self._max_timeout_time_for_action_call)
-
-        # Now add mesh to object
-        if self._is_segment_anything_segmentation_enabled:
-            future = self.trigger_add_mesh_to_object_request(
-                self._get_objects_detected_object_id, mesh_file_path)
-            result = self.wait_for_service_result(
-                future, timeout=self._max_timeout_time_for_action_call)
-            self.node.get_logger().info(f'Add mesh to object result: {result}')
-            if result is None:
-                self.node.get_logger().error('Add mesh to object action failed')
-                self.failure_count += 1
-
-                return False
-            self.total_count += 1
-
-        # Now get object pose
-        self.trigger_get_object_pose_goal(self._get_objects_detected_object_id)
-        self.wait_for_result('_get_object_pose_result_received',
-                             timeout=self._max_timeout_time_for_action_call)
-
-        self._get_objects_result_received = False
-        self._segmentation_result_received = False
-        self._add_mesh_result_received = False
-        self._get_object_pose_result_received = False
-        return True
-
-    def do_perception_for_pose_estimation(self, mesh_file_path: str):
-        if self._wait_for_point_topic and self.peg_pose is None:
-
-            initial_hint_for_peg_stand_estimation = None
-            initial_hint_for_gear_insertion = None
-
-            self.node.get_logger().error(
-                'Waiting for point topic input for Peg stand estimation...')
-            # Wait to get a message on the point topic.
-            while True:
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-                if len(self.received_messages[self._point_topic_name_as_trigger]) > 0:
-                    self.node.get_logger().info('Point topic received')
-                    self.initial_hint_point_msg = \
-                        self.received_messages[self._point_topic_name_as_trigger][-1]
-                    initial_hint_for_peg_stand_estimation = self.initial_hint_point_msg
-                    self.received_messages[self._point_topic_name_as_trigger] = []
-                    break
-
-        if self.peg_pose is None:
-
-            # Do perception loop.
-            self.node.get_logger().info(
-                'Setting mesh file path for peg stand estimation'
-                f': {self._mesh_file_path_for_peg_stand_estimation}')
-
-            self.set_gear_mesh_param(self._mesh_file_path_for_peg_stand_estimation)
-
-            self.node.get_logger().info('Doing perception loop for peg stand estimation')
-
-            is_peg_stand_estimation_success = self.do_perception_loop(
-                initial_hint_for_peg_stand_estimation,
-                self._mesh_file_path_for_peg_stand_estimation)
-            while not is_peg_stand_estimation_success:
-                self.node.get_logger().error('Peg stand estimation action failed')
-                is_peg_stand_estimation_success = self.do_perception_loop(
-                    initial_hint_for_peg_stand_estimation,
-                    self._mesh_file_path_for_peg_stand_estimation)
-                self.node.get_logger().info('Peg stand estimation action failed, retrying...')
-
-            # This is w.r.t to camera, but we need to convert it to base link.
-            self.peg_pose = self.latest_pose_gotten
-
-            self.received_messages[self._point_topic_name_as_trigger] = []
-            self.node.get_logger().info(f'Peg pose: {self.peg_pose}')
-
-            if self.peg_pose is None:
-                self.fail('Pose estimation failed for peg stand')
-
-            # Now publish this on TF Static with parent farme being
-            # camera_frame and child frame being gear_assembly_est_frame.
-            self.node.get_logger().info('Publishing peg pose on TF Static')
-            self.publish_pose_on_tf_static(self.peg_pose,
-                                           parent_frame=self._camera_prim_name_in_tf,
-                                           child_frame='gear_assembly_frame')
-
-        self.received_messages[self._point_topic_name_as_trigger] = []
-        self.node.get_logger().error('Waiting for point topic for gear insertion...')
-
-        # Wait to get a message on the point topic.
-        while True:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-            if len(self.received_messages[self._point_topic_name_as_trigger]) > 0:
-                self.node.get_logger().info('Point topic received')
-                self.initial_hint_point_msg = \
-                    self.received_messages[self._point_topic_name_as_trigger][-1]
-                initial_hint_for_gear_insertion = self.initial_hint_point_msg
-                break
-
-        self.node.get_logger().info(
-            f'Setting mesh file path for gear insertion: {mesh_file_path}')
-        self.set_gear_mesh_param(mesh_file_path)
-        self.node.get_logger().info('Doing perception loop for gear insertion')
-        is_gear_estimation_success = self.do_perception_loop(initial_hint_for_gear_insertion,
-                                                             mesh_file_path)
-        while not is_gear_estimation_success:
-            self.node.get_logger().info('Gear estimation action failed, retrying...')
-            is_gear_estimation_success = self.do_perception_loop(
-                initial_hint_for_gear_insertion, mesh_file_path)
-            time.sleep(2)
-
-        self.gear_pose = self.latest_pose_gotten
-
-        if self.gear_pose is None:
-            self.fail('Pose estimation failed for gear')
-
-    def update_gripper_close_pos(self, close_gripper_pos: float):
-        """Update the gripper close position."""
-        self.node.get_logger().info(f'Updating gripper close position to {close_gripper_pos}')
-
-        for _ in range(10):
-            self._gripper_close_pos_publisher.publish(Float64(data=close_gripper_pos))
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-            self.node.get_logger().info('Robot has updated its gripper close position')
-
-        self.node.get_logger().info('Robot has updated its gripper close position')
-
-    def pick_and_place(
-        self,
-        object_id: int,
-        class_id: str = '',
-        place_pose: Pose = None,
-        gripper_closed_position: float = 0.623,
-        use_joint_space_planner: bool = False,
-        keep_gripper_closed_after_completion: bool = False,
-        only_perform_place: bool = False
-    ) -> bool:
-        """
-        Pick and place an object using the PickAndPlace action.
-
-        Args
-        ----
-            node: The node to use for the behavior.
-            object_id: The ID of the object to pick.
-            class_id: The class ID of the object (optional).
-            place_pose: The pose where to place the object
-            use_joint_space_planner: Whether to use the joint space planner.
-            keep_gripper_closed_after_completion: Whether to keep the gripper closed after
-                completion.
-
-        Returns
-        -------
-            True if the behavior was successful, False otherwise.
-
-        """
-        pick_and_place_client = ActionClient(self.node, PickAndPlace, '/pick_and_place')
-
-        # Wait for the action server to be available
-        if not pick_and_place_client.wait_for_server(timeout_sec=10.0):
-            self.node.get_logger().error('PickAndPlace action server not available')
-            return False
-
-        # Create the goal
-        pick_and_place_goal = PickAndPlace.Goal()
-        pick_and_place_goal.object_id = object_id
-        pick_and_place_goal.class_id = class_id
-        pick_and_place_goal.use_joint_space_planner_for_place_pose = use_joint_space_planner
-        pick_and_place_goal.target_joint_state_for_place_pose = \
-            self._target_joint_state_for_place_pose
-        pick_and_place_goal.gripper_closed_position = gripper_closed_position
-        pick_and_place_goal.keep_gripper_closed_after_completion = \
-            keep_gripper_closed_after_completion
-        pick_and_place_goal.place_pose = place_pose
-        pick_and_place_goal.only_perform_place = only_perform_place
-
-        # Send the goal
-        self.node.get_logger().info(f'Sending PickAndPlace goal for object_id: {object_id}')
-        goal_future = pick_and_place_client.send_goal_async(pick_and_place_goal)
-
-        # Wait for the goal to be accepted
-        rclpy.spin_until_future_complete(self.node, goal_future)
-        goal_handle = goal_future.result()
-
-        if not goal_handle.accepted:
-            self.node.get_logger().error('PickAndPlace goal was rejected')
-            return False
-
-        self.node.get_logger().info('PickAndPlace goal accepted')
-
-        # Wait for the result
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node, result_future)
-        result = result_future.result()
-
-        if not result.result.success:
-            self.node.get_logger().error(f'PickAndPlace failed with status: {result.result}')
-            return False
-
-        self.node.get_logger().info(f'PickAndPlace completed successfully: {result.result}')
-        return True
-
-    def rl_insertion(
-        self,
-        peg_pose: Pose
-    ) -> bool:
-        """
-        Insert an object into a peg using the RL insertion action.
-
-        Args
-        ----
-            peg_pose: The pose of the peg to insert the object into.
-
-        Returns
-        -------
-            True if the insertion was successful, False otherwise.
-
-        """
-        insertion_client = ActionClient(self.node, Insert, '/gear_assembly/insert_policy')
-
-        if not insertion_client.wait_for_server(timeout_sec=1.0):
-            self.node.get_logger().error('Insertion action server not available')
-            return False
-
-        goal = Insert.Goal()
-        goal.goal_pose = PoseStamped()
-        goal.goal_pose.pose = peg_pose
-        goal.goal_pose.header.stamp = self.node.get_clock().now().to_msg()
-        goal.goal_pose.header.frame_id = 'base_link'  # This is base or base link.
-        goal_future = insertion_client.send_goal_async(goal)
-
-        rclpy.spin_until_future_complete(self.node, goal_future)
-
-        for _ in range(10):
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-        goal_handle = goal_future.result()
-
-        if not goal_handle.accepted:
-            self.node.get_logger().error('Insertion goal was rejected')
-            return False
-
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node, result_future)
-
-        return True
-
-    def _switch_sim_controller_to_rl_policy(self, is_rl_policy: bool):
-        """Switch the sim controller to the RL policy."""
-        # Just publish this Bool msg to a topic 5 times.
-        for _ in range(5):
-            self._switch_sim_controller_to_rl_policy_publisher.publish(Bool(data=is_rl_policy))
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-        self.node.get_logger().info('Switched sim controller to RL policy')
-
-    def _take_simulation_robot_to_home_position(self):
-        """Take the simulation robot to the home position."""
-        # Publish a joint topic to sim joint commands topic.
-        joint_positions = [
-            2.7424,
-            -0.9247,
-            1.2466,
-            -1.8927,
-            -1.5708,
-            -1.8895
-        ]
-        # Create JointState message
-        joint_state = JointState()
-        joint_state.position = joint_positions
-        joint_state.velocity = [0.0] * len(joint_positions)
-        joint_state.effort = [0.0] * len(joint_positions)
-
-        # Set joint names based on the number of joints (assuming UR10e joint names)
-        joint_state.name = [
-            'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint',
-            'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
-        ]
-
-        self.node.get_logger().info(f'Taking robot to home position: {joint_positions}')
-
-        self.node.get_logger().info('Publishing joint state to sim joint commands topic')
-        self._sim_joint_commands_publisher.publish(joint_state)
-
-        self.node.get_logger().info('Done publishing joint state to sim joint commands topic')
-
-    def trigger_gripper(self, position: float, max_effort: float):
-        """
-        Trigger gripper to either open or close.
-
-        Args
-        ----
-            position (float): Position
-            max_effort (float): Max effort
-
-        Returns
-        -------
-            None
-
-        """
-        self._gripper_done_event.clear()
-        gripper_goal = GripperCommand.Goal()
-        gripper_goal.command.position = float(position)
-        gripper_goal.command.max_effort = float(max_effort)
-
-        gripper_goal_future = self._gripper_client.send_goal_async(gripper_goal)
-        gripper_goal_future.add_done_callback(self.gripper_goal_response_cb)
-
-    def gripper_goal_response_cb(self, future):
-        """
-        Get goal response for Gripper.
-
-        Args
-        ----
-            future (_type_): Future for goal response
-
-        Returns
-        -------
-            None
-
-        """
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.node.get_logger().error('Goal Rejected for GripperCommand')
-            self._gripper_done_result = False
-            self._gripper_done_event.set()
-            return
-        # Cache the goal handle for canceling
-        self.node.get_logger().info('Goal accepted for GripperCommand')
-        gripper_result_future = goal_handle.get_result_async()
-        gripper_result_future.add_done_callback(self.gripper_goal_result_cb)
-
-    def gripper_goal_result_cb(self, future: Any):
-        """
-        Get the final result from gripper trigger action call.
-
-        Args
-        ----
-            future (Any): Future for goal result
-
-        Returns
-        -------
-            None
-
-        """
-        status = future.result().status
-
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            self.node.get_logger().info('GripperCommand action server succeeded.')
-            self._gripper_done_result = True
-        elif status == GoalStatus.STATUS_ABORTED:
-            self.node.get_logger().error('GripperCommand action server aborted.')
-            self._gripper_done_result = False
-        elif status == GoalStatus.STATUS_CANCELED:
-            self.node.get_logger().error('GripperCommand action server canceled.')
-            self._gripper_done_result = False
-        else:
-            self.node.get_logger().error('GripperCommand action server failed.')
-            self._gripper_done_result = False
-
-        self._gripper_done_event.set()
-
-    def _open_gripper(self):
-        """Open the gripper."""
-        self.trigger_gripper(position=0.0, max_effort=10.0)
-
-    def test_for_servers_pol(self):
-        """Test that verifies that servers action calls under multiple cycles."""
-        if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
-            return
-
-        self.setUpClients()
-
-        if self._wait_for_point_topic:
-            self.received_messages = {}
-            self._subs = self.create_logging_subscribers(
-                [(self._point_topic_name_as_trigger, Point)],
-                self.received_messages,
-                use_namespace_lookup=False,
-                accept_multiple_messages=True,
-                qos_profile=rclpy.qos.qos_profile_sensor_data)
-            self.initial_hint_point_msg = None
-
-        self.node.get_logger().info('Starting test for manipulator servers POL')
-
-        # spin for 50 seconds.
-        start_time = time.time()
-        while time.time() - start_time < 30:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-        gears_to_insert = [
-            'gear_shaft_large',
-            'gear_shaft_small',
-            'gear_shaft_medium'
-        ]
-
-        gear_ground_truth_sim_names = [
-            'gear_large',
-            'gear_small',
-            'gear_medium'
-        ]
-
-        for idx, gear_type in enumerate(gears_to_insert):
-            if not self._use_ground_truth_pose_estimation:
-                self.node.get_logger().error('Waiting for user input to trigger perception')
-                self.wait_for_point_topic_func()
-
-            mesh_file_path_for_gear = self._mesh_file_paths[idx]
-            close_gripper_pos = self._gripper_close_pos[idx]
-
-            if self._use_sim_time:
-                # We need to do this as we have a control layer for the gripper in Isaac Sim.
-                self.update_gripper_close_pos(close_gripper_pos)
-                close_gripper_pos = self._gripper_close_pos[idx]
-            else:
-                # For real robot this doesnt matter, the gripper doesn't matter, it doesnt cause
-                # the gear to fly out of the grasp.
-                close_gripper_pos = 0.65
-
-            if not self._use_ground_truth_pose_estimation:
-                self.do_perception_for_pose_estimation(mesh_file_path_for_gear)
-
-            if self._use_sim_time and self._use_ground_truth_pose_estimation:
-
-                # Spin a few times
-                for _ in range(10):
-                    rclpy.spin_once(self.node, timeout_sec=0.1)
-                # base_T_gear_large_actual, do it w.r.t camera since we get that pose
-                # out of the FP node and thats the one the server gives you.
-                self.ground_truth_pose_estimation_held_asset = self._get_transform_from_tf(
-                    gear_ground_truth_sim_names[idx],
-                    'base_link')
-
-                self.gear_pose = self.ground_truth_pose_estimation_held_asset
-
-            if self._use_sim_time and self._verify_pose_estimation_accuracy:
-                # Get transformation matrix from ROS2 pose. 4 x 4 matrix.
-                object_pose_estimation_transform = \
-                    geometry_utils.get_transformation_matrix_from_ros(
-                        self.object_pose_estimation_result.translation,
-                        self.object_pose_estimation_result.rotation)
-                ground_truth_pose_estimation_transform = \
-                    geometry_utils.get_transformation_matrix_from_ros(
-                        self.ground_truth_pose_estimation.translation,
-                        self.ground_truth_pose_estimation.rotation)
-
-                # Now do the check of the diff from ground truth.
-                delta_transform = geometry_utils.compute_transformation_delta(
-                    object_pose_estimation_transform, ground_truth_pose_estimation_transform)
-                translation_norm_delta_cm, translation_ros_delta_mrad = \
-                    geometry_utils.compute_delta_translation_rotation(delta_transform)
-                self.node.get_logger().info(
-                    f'Translation norm delta: {translation_norm_delta_cm} cm')
-                self.node.get_logger().info(
-                    f'Translation delta: {translation_ros_delta_mrad} mrad')
-
-                self.ground_truth_pose_estimation_w_r_t_base = self._get_transform_from_tf(
-                    gear_ground_truth_sim_names[idx], 'base_link')
-                T_base = geometry_utils.get_transformation_matrix_from_ros(
-                    self.ground_truth_pose_estimation_w_r_t_base.translation,
-                    self.ground_truth_pose_estimation_w_r_t_base.rotation)
-
-                self.node.get_logger().info(f'T_base translation in meters: {T_base[:3, 3]}')
-
-                assert False, 'Print this'
-
-            if not self._use_sim_time:
-                self.switch_to_trajectory_control()
-
-            if not self._use_ground_truth_pose_estimation:
-                self.node.get_logger().error('Waiting for user input to trigger pick and place')
-                self.wait_for_point_topic_func()
-
-            # Spin a few times
-            for _ in range(10):
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            place_pose_transform = self._get_transform_from_tf(
-                gear_type, 'base_link')  # TODO change back to gear assembly
-
-            place_pose = geometry_utils.get_pose_from_transform(place_pose_transform)
-
-            # Rotate place pose by 180 degrees about x to make Z axis face down.
-            # Then subtract 15 cm from z axis so that aligns well on top of peg.
-            rotated_place_pose = geometry_utils.rotate_pose(place_pose, 180, 'x')
-            rotated_place_pose.position.z += self._peg_stand_shaft_offset_for_cumotion
-
-            self.node.get_logger().info('Doing gear pickup and place')
-
-            self.publish_pose_on_tf(rotated_place_pose,
-                                    parent_frame='base_link',
-                                    child_frame='place_pose_static_frame')
-
-            # Also publish detectedobject 1 on TF static
-            if not self._use_ground_truth_pose_estimation:
-                self.publish_pose_on_tf(self.gear_pose,
-                                        parent_frame=self._camera_prim_name_in_tf,
-                                        child_frame='detected_object1')
-            else:
-                gear_pose_in_pose_msg = geometry_utils.get_pose_from_transform(self.gear_pose)
-
-                gear_pose_in_pose_msg.position.z += 0.02  # Add 2 cms
-                self.publish_pose_on_tf(gear_pose_in_pose_msg,
-                                        parent_frame='base_link',
-                                        child_frame='detected_object1')
-                self.node.get_logger().info(
-                    f'Published detected object 1 on TF static: {gear_pose_in_pose_msg}')
-                self._get_objects_detected_object_id = 0
-                for _ in range(10):
-                    rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            # Now do PickAndHover action on that object using get objects detected id.
-            is_place_and_hover_success = self.pick_and_place(
-                object_id=self._get_objects_detected_object_id,
-                gripper_closed_position=close_gripper_pos,
-                place_pose=rotated_place_pose,
-                use_joint_space_planner=self._use_joint_space_planner_api,
-                keep_gripper_closed_after_completion=True
-            )
-
-            if not is_place_and_hover_success:
-                self.node.get_logger().error('Pick and place action failed')
-                self.failure_count += 1
-                self.fail('Pick and place action failed')
-
-            for _ in range(10):
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            # Use base here because policy sees base.
-            peg_pose_transform = self._get_transform_from_tf(
-                gear_type, 'base')
-
-            peg_pose = geometry_utils.get_pose_from_transform(peg_pose_transform)
-
-            # # Publish this pose for sanity under a new name on tf static
-            self.publish_pose_on_tf_static(peg_pose,
-                                           parent_frame='base',
-                                           child_frame='rl_insertion_pose_frame')
-            self.node.get_logger().info(f'Peg pose: {peg_pose}')
-
-            if self._run_rl_inference:
-                if not self._use_sim_time:
-                    self.switch_to_impedance_control()
-                    # Wait to get a message on the point topic.
-                    self.node.get_logger().error(
-                        'Waiting for confirmation to start RL policy...'
-                        f'click any point on image. Will try to insert on TF: {gear_type}')
-                    self.wait_for_point_topic_func()
-                else:
-                    self._switch_sim_controller_to_rl_policy(is_rl_policy=True)
-
-                is_rl_insertion_success = self.rl_insertion(
-                    peg_pose=peg_pose
-                )
-
-                if not is_rl_insertion_success:
-                    self.node.get_logger().error('RL insertion action failed')
-                    self.fail('RL insertion action failed')
-
-                self.node.get_logger().info('RL insertion action completed successfully')
-                if self._use_sim_time:
-                    # Open gripper.
-                    self._open_gripper()
-                    self._gripper_done_event.wait(timeout=10.0)
-
-                    self._take_simulation_robot_to_home_position()
-                    self.node.get_logger().info('Waiting for 5 seconds')
-                    rclpy.spin_once(self.node, timeout_sec=5.0)
-                    self.node.get_logger().info('Done waiting')
-                    # Switching back to cuMotion controller.
-                    self._switch_sim_controller_to_rl_policy(is_rl_policy=False)
-                    # Reset the gripper done event and result.
-                    self._gripper_done_event.clear()
-                    self._gripper_done_result = False
-
-            else:
-                continue
-
-            # Now clear objects
-            future = self.send_clear_objects_request()
-            result = self.wait_for_service_result(
-                future, timeout=self._max_timeout_time_for_action_call)
-            self.node.get_logger().info(f'Clear objects result: {result}')
-            if result is None:
-                self.node.get_logger().error('Clear objects action failed')
-                self.failure_count += 1
-                continue
-            self.total_count += 1
-
-            # Reset for next iteration
-            self._clear_objects_result_received = False
-
-        self.node.get_logger().info(f'Failure count: {self.failure_count}')
-        assert self.failure_count / self.total_count < 0.3, f'Pose estimation action failed' \
-            f'{self.failure_count}/{self.total_count} times'
-
-    @classmethod
-    def generate_test_description(cls, run_test: bool,
-                                  max_timeout_time_for_action_call: int,
-                                  num_cycles: int,
-                                  use_sim_time: bool,
-                                  nodes: list[Node],
-                                  is_segment_anything_object_detection_enabled: bool,
-                                  is_segment_anything_segmentation_enabled: bool,
-                                  is_rt_detr_object_detection_enabled: bool,
-                                  initial_hint: Dict,
-                                  mesh_file_paths: List[str],
-                                  ground_truth_sim_prim_name: str,
-                                  camera_prim_name_in_tf: str,
-                                  output_dir: str,
-                                  node_startup_delay: float,
-                                  peg_stand_shaft_offset_for_cumotion: float,
-                                  point_topic_name_as_trigger: str = 'input_points_debug',
-                                  wait_for_point_topic: bool = False,
-                                  use_ground_truth_pose_estimation: bool = False,
-                                  verify_pose_estimation_accuracy: bool = False,
-                                  run_rl_inference: bool = False,
-                                  publish_only_on_static_tf: bool = False,
-                                  use_joint_space_planner_api: bool = False,
-                                  target_joint_state_for_place_pose: JointState = None,
-                                  gripper_close_pos: List[float] = [0.50, 0.64, 0.52],
-                                  mesh_file_path_for_peg_stand_estimation: str = ''):
-        cls._run_test = run_test
-        cls._max_timeout_time_for_action_call = max_timeout_time_for_action_call
-        cls._num_cycles = num_cycles
-        cls._use_sim_time = use_sim_time
-        cls._is_segment_anything_object_detection_enabled = \
-            is_segment_anything_object_detection_enabled
-        cls._is_segment_anything_segmentation_enabled = is_segment_anything_segmentation_enabled
-        cls._is_rt_detr_object_detection_enabled = is_rt_detr_object_detection_enabled
-        cls._initial_hint = initial_hint
-        cls._output_dir = output_dir
-        cls._mesh_file_paths = mesh_file_paths
-        cls._mesh_file_path_for_peg_stand_estimation = mesh_file_path_for_peg_stand_estimation
-        cls._wait_for_point_topic = wait_for_point_topic
-        cls._point_topic_name_as_trigger = point_topic_name_as_trigger
-        cls._ground_truth_sim_prim_name = ground_truth_sim_prim_name
-        cls._camera_prim_name_in_tf = camera_prim_name_in_tf
-        cls._use_ground_truth_pose_estimation = use_ground_truth_pose_estimation
-        cls._verify_pose_estimation_accuracy = verify_pose_estimation_accuracy
-        cls._run_rl_inference = run_rl_inference
-        cls._gripper_close_pos = gripper_close_pos
-        cls._use_joint_space_planner_api = use_joint_space_planner_api
-        cls._target_joint_state_for_place_pose = target_joint_state_for_place_pose
-        cls._publish_only_on_static_tf = publish_only_on_static_tf
-        cls._peg_stand_shaft_offset_for_cumotion = peg_stand_shaft_offset_for_cumotion
-
-        return super().generate_test_description(
-            nodes=nodes,
-            node_startup_delay=node_startup_delay
-        )
-
-
-class IsaacRosManipulationGearInsertionPolTest(IsaacROSBaseTest):
-    """
-    Test for Isaac ROS Gear Insertion POL.
-
-    This test will do RL insertion action on the object.
-    """
-
-    DEFAULT_NAMESPACE = ''
-    _max_timeout_time_for_action_call: float = 10.0
-    _ground_truth_sim_prim_name: str = 'gear_large'
-    _use_sim_time: bool = False
-    _run_test: bool = False
-    _wait_for_point_topic: bool = False
-    _point_topic_name_as_trigger: str = ''
-    _peg_stand_shaft_offset_for_cumotion: float
-
-    def setUpClients(self) -> None:
-        """Set up before each test method."""
-        self.failure_count = 0
-        self.total_count = 0
-
-        self.latest_pose_gotten = None
-
-        self.object_pose_estimation_result = None
-        self.ground_truth_pose_estimation = None
-
-        # Create tf buffer and listener
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self.node)
-
-        self.tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self.node)
-
-        self._current_gear = None
-        self._initial_hint_point_msg = Point()
-
-        self.peg_pose = None
-
-    def _get_transform_from_tf(self, child_frame: str, parent_frame: str) -> TransformStamped:
-        """Get the transform of a child frame relative to a parent frame."""
-        try:
-            transform = self.tf_buffer.lookup_transform(
-                parent_frame, child_frame,
-                rclpy.time.Time(),
-                rclpy.duration.Duration(seconds=1.0)
-            )
-            return transform.transform
-        except Exception as e:
-            raise e
-
-    def publish_pose_on_tf_static(self, grasp_pose: Pose, parent_frame: str, child_frame: str):
-        """
-        Publish the grasp transform in the world frame.
-
-        Args
-        ----
-            grasp_pose (Pose): The grasp pose to publish.
-            parent_frame (str): The parent frame.
-            child_frame (str): The child frame.
-
-        Returns
-        -------
-            None
-
-        """
-        if grasp_pose is None:
-            self.node.get_logger().error('Grasp pose should never be None')
-            return
-
-        transform_stamped = TransformStamped()
-        transform_stamped.header = Header()
-        transform_stamped.header.stamp = self.node.get_clock().now().to_msg()
-        transform_stamped.header.frame_id = parent_frame
-        transform_stamped.child_frame_id = child_frame
-
-        # Assign the position and orientation from the grasp pose
-        transform_stamped.transform.translation.x = grasp_pose.position.x
-        transform_stamped.transform.translation.y = grasp_pose.position.y
-        transform_stamped.transform.translation.z = grasp_pose.position.z
-        transform_stamped.transform.rotation.x = grasp_pose.orientation.x
-        transform_stamped.transform.rotation.y = grasp_pose.orientation.y
-        transform_stamped.transform.rotation.z = grasp_pose.orientation.z
-        transform_stamped.transform.rotation.w = grasp_pose.orientation.w
-
-        # Publish the transform
-        self.tf_static_broadcaster.sendTransform(transform_stamped)
-        self.node.get_logger().info(f'Published pose frame from {parent_frame} to {child_frame}')
-
-    def wait_for_point_topic_func(self):
-        """Wait for a message on the point topic."""
-        self.received_messages[self._point_topic_name_as_trigger] = []
-        self.node.get_logger().error('Waiting for point topic input for next step...')
-        while True:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-            if len(self.received_messages[self._point_topic_name_as_trigger]) > 0:
-                self.node.get_logger().info('Point topic received')
-                return
-
-    def rl_insertion(
-        self,
-        peg_pose: Pose
-    ) -> bool:
-        """
-        Insert an object into a peg using the RL insertion action.
-
-        Args
-        ----
-            peg_pose: The pose of the peg to insert the object into.
-
-        Returns
-        -------
-            True if the insertion was successful, False otherwise.
-
-        """
-        insertion_client = ActionClient(self.node, Insert, '/gear_assembly/insert_policy')
-
-        if not insertion_client.wait_for_server(timeout_sec=1.0):
-            self.node.get_logger().error('Insertion action server not available')
-            return False
-
-        goal = Insert.Goal()
-        goal.goal_pose = PoseStamped()
-        goal.goal_pose.pose = peg_pose
-        goal.goal_pose.header.stamp = self.node.get_clock().now().to_msg()
-        goal.goal_pose.header.frame_id = 'base'
-        goal_future = insertion_client.send_goal_async(goal)
-
-        rclpy.spin_until_future_complete(self.node, goal_future)
-        goal_handle = goal_future.result()
-
-        if not goal_handle.accepted:
-            self.node.get_logger().error('Insertion goal was rejected')
-            return False
-
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node, result_future)
-        result = result_future.result()
-
-        self.node.get_logger().info(f'Insertion completed successfully: {result.result}')
-        return True
-
-    def test_for_servers_pol(self):
-        """Test that verifies that servers action calls under multiple cycles."""
-        if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
-            return
-
-        self.setUpClients()
-
-        if self._wait_for_point_topic:
-            self.received_messages = {}
-            self._subs = self.create_logging_subscribers(
-                [(self._point_topic_name_as_trigger, Point)],
-                self.received_messages,
-                use_namespace_lookup=False,
-                accept_multiple_messages=True,
-                qos_profile=rclpy.qos.qos_profile_sensor_data)
-            self.initial_hint_point_msg = None
-
-        self.node.get_logger().info('Starting test for manipulator servers POL')
-
-        # spin for 30 seconds.
-        start_time = time.time()
-        while time.time() - start_time < 30:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-        gears_to_insert = [
-            'gear_shaft_large',
-        ]
-
-        for _, gear_type in enumerate(gears_to_insert):
-
-            # Spin a few times
-            for _ in range(10):
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-            # Use base here because policy sees base.
-            peg_pose_transform = self._get_transform_from_tf(
-                child_frame=gear_type, parent_frame='base')
-
-            peg_pose = geometry_utils.get_pose_from_transform(peg_pose_transform)
-
-            # # Publish this pose for sanity under a new name on tf static
-            self.publish_pose_on_tf_static(peg_pose,
-                                           parent_frame='base',
-                                           child_frame='rl_insertion_pose_frame')
-            self.node.get_logger().info(f'Peg pose: {peg_pose}')
-
-            # Wait to get a message on the point topic.
-            self.node.get_logger().error(
-                'Waiting for confirmation to start RL policy...'
-                f'click any point on image. Will try to insert on TF: {gear_type}')
-            self.wait_for_point_topic_func()
-
-            is_rl_insertion_success = self.rl_insertion(
-                peg_pose=peg_pose
-            )
-
-            if not is_rl_insertion_success:
-                self.node.get_logger().error('RL insertion action failed')
-                self.fail('RL insertion action failed')
-
-            self.node.get_logger().info('RL insertion action completed successfully')
-
-    @classmethod
-    def generate_test_description(cls, run_test: bool,
-                                  max_timeout_time_for_action_call: int,
-                                  use_sim_time: bool,
-                                  nodes: list[Node],
-                                  ground_truth_sim_prim_name: str,
-                                  output_dir: str,
-                                  node_startup_delay: float,
-                                  peg_stand_shaft_offset_for_cumotion: float,
-                                  point_topic_name_as_trigger: str = 'input_points_debug',
-                                  wait_for_point_topic: bool = False):
-        cls._run_test = run_test
-        cls._max_timeout_time_for_action_call = max_timeout_time_for_action_call
-        cls._use_sim_time = use_sim_time
-        cls._output_dir = output_dir
-        cls._wait_for_point_topic = wait_for_point_topic
-        cls._point_topic_name_as_trigger = point_topic_name_as_trigger
-        cls._ground_truth_sim_prim_name = ground_truth_sim_prim_name
-        cls._peg_stand_shaft_offset_for_cumotion = peg_stand_shaft_offset_for_cumotion
 
         return super().generate_test_description(
             nodes=nodes,
@@ -4795,7 +3006,8 @@ class CollectTargetLessCalibrationDataTest(IsaacROSBaseTest):
                         timeout=rclpy.duration.Duration(seconds=1.0)
                     )
                 except Exception as e:
-                    self.node.get_logger().warn(f'Failed to get transform for {joint_name}: {e}')
+                    self.node.get_logger().warning(
+                        f'Failed to get transform for {joint_name}: {e}')
                     continue
 
                 if transform is not None:
@@ -4806,167 +3018,6 @@ class CollectTargetLessCalibrationDataTest(IsaacROSBaseTest):
                         joint_name=joint_name
                     )
                     self._received_joint_transforms[joint_name] = True
-
-
-class IsaacRosManipulationPoseEstimationErrorPolTest(IsaacRosManipulationGearAssemblyPolTest):
-    """Test for Isaac ROS Pose Estimation Error POL."""
-
-    def do_perception_for_pose_estimation(self, mesh_file_path: str):
-        if self._wait_for_point_topic and self.peg_pose is None:
-
-            initial_hint_for_peg_stand_estimation = None
-
-            self.node.get_logger().error(
-                'Waiting for point topic input for Peg stand estimation...')
-            # Wait to get a message on the point topic.
-            while True:
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-                if len(self.received_messages[self._point_topic_name_as_trigger]) > 0:
-                    self.node.get_logger().info('Point topic received')
-                    self.initial_hint_point_msg = \
-                        self.received_messages[self._point_topic_name_as_trigger][-1]
-                    initial_hint_for_peg_stand_estimation = self.initial_hint_point_msg
-                    self.received_messages[self._point_topic_name_as_trigger] = []
-                    break
-
-        if self.peg_pose is None:
-
-            # Do perception loop.
-            self.node.get_logger().info(
-                'Setting mesh file path for peg stand estimation'
-                f': {self._mesh_file_path_for_peg_stand_estimation}')
-
-            self.set_gear_mesh_param(self._mesh_file_path_for_peg_stand_estimation)
-
-            self.node.get_logger().info('Doing perception loop for peg stand estimation')
-
-            is_peg_stand_estimation_success = self.do_perception_loop(
-                initial_hint_for_peg_stand_estimation,
-                self._mesh_file_path_for_peg_stand_estimation)
-            while not is_peg_stand_estimation_success:
-                self.node.get_logger().error('Peg stand estimation action failed')
-                is_peg_stand_estimation_success = self.do_perception_loop(
-                    initial_hint_for_peg_stand_estimation,
-                    self._mesh_file_path_for_peg_stand_estimation)
-                self.node.get_logger().info('Peg stand estimation action failed, retrying...')
-
-            # This is w.r.t to camera, but we need to convert it to base link.
-            self.peg_pose = self.latest_pose_gotten
-
-            self.received_messages[self._point_topic_name_as_trigger] = []
-            self.node.get_logger().info(f'Peg pose: {self.peg_pose}')
-
-            # if self.peg_pose is None:
-            #     self.fail('Pose estimation failed for peg stand')
-            if self.peg_pose is None:
-                self.node.get_logger().error('Pose estimation failed for peg stand')
-            else:
-                # Now publish this on TF Static with parent farme being
-                # camera_frame and child frame being gear_assembly_est_frame.
-                self.node.get_logger().info('Publishing peg pose on TF Static')
-                self.publish_pose_on_tf_static(self.peg_pose,
-                                               parent_frame=self._camera_prim_name_in_tf,
-                                               child_frame='gear_assembly_frame')
-
-    def test_for_pose_estimation_error_pol(self):
-        if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
-            return
-
-        self.setUpClients()
-        hang_test_after_completion = True
-        if self._wait_for_point_topic:
-            self.received_messages = {}
-            self._subs = self.create_logging_subscribers(
-                [(self._point_topic_name_as_trigger, Point)],
-                self.received_messages,
-                use_namespace_lookup=False,
-                accept_multiple_messages=True,
-                qos_profile=rclpy.qos.qos_profile_sensor_data)
-            self.initial_hint_point_msg = None
-
-        self.node.get_logger().info('Starting test for manipulator pose estimation error POL')
-
-        # spin for 50 seconds.
-        start_time = time.time()
-        while time.time() - start_time < 30:
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-
-        gears_to_insert = [
-            'gear_shaft_large',
-        ]
-
-        for idx, gear_type in enumerate(gears_to_insert):
-            if not self._use_ground_truth_pose_estimation:
-                self.node.get_logger().error('Waiting for user input to trigger perception')
-                self.wait_for_point_topic_func()
-
-            mesh_file_path_for_gear = self._mesh_file_paths[idx]
-            close_gripper_pos = self._gripper_close_pos[idx]
-            close_gripper_pos = 0.65
-
-            if not self._use_ground_truth_pose_estimation:
-                self.do_perception_for_pose_estimation(mesh_file_path_for_gear)
-
-            if not self._use_sim_time:
-                self.switch_to_trajectory_control()
-
-            if not self._use_ground_truth_pose_estimation:
-                self.node.get_logger().error('Waiting for user input to trigger pick and place')
-                self.wait_for_point_topic_func()
-
-            # Spin a few times
-            for _ in range(10):
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            place_pose_transform = self._get_transform_from_tf(
-                gear_type, 'base_link')
-
-            place_pose = geometry_utils.get_pose_from_transform(place_pose_transform)
-
-            # Rotate place pose by 180 degrees about x to make Z face down.
-            # Then subtract 15 cm from z axis so that aligns well on top of peg.
-            rotated_place_pose = geometry_utils.rotate_pose(place_pose, 180, 'x')
-            rotated_place_pose.position.z += self._peg_stand_shaft_offset_for_cumotion
-
-            self.node.get_logger().info('Doing gear pickup and place')
-
-            self.publish_pose_on_tf(rotated_place_pose,
-                                    parent_frame='base_link',
-                                    child_frame='place_pose_static_frame')
-
-            # Now do PickAndHover action on that object using get objects detected id.
-            is_place_and_hover_success = self.pick_and_place(
-                object_id=0,
-                gripper_closed_position=close_gripper_pos,
-                place_pose=rotated_place_pose,
-                use_joint_space_planner=self._use_joint_space_planner_api,
-                keep_gripper_closed_after_completion=True,
-                only_perform_place=True
-            )
-
-            if not is_place_and_hover_success:
-                self.node.get_logger().error('Pick and place action failed')
-                self.failure_count += 1
-                self.fail('Pick and place action failed')
-
-            for _ in range(10):
-                rclpy.spin_once(self.node, timeout_sec=0.1)
-
-            # Use base here because policy sees base.
-            peg_pose_transform = self._get_transform_from_tf(
-                gear_type, 'base')
-
-            peg_pose = geometry_utils.get_pose_from_transform(peg_pose_transform)
-
-            # Publish this pose for sanity under a new name on tf static
-            self.publish_pose_on_tf_static(peg_pose,
-                                           parent_frame='base',
-                                           child_frame='rl_insertion_pose_frame')
-            self.node.get_logger().info(f'Peg pose: {peg_pose}')
-
-            if hang_test_after_completion:
-                time.sleep(1000)
 
 
 class PoseEstimationDifferentDepthBackendsTest(IsaacROSBaseTest):
@@ -5039,7 +3090,7 @@ class PoseEstimationDifferentDepthBackendsTest(IsaacROSBaseTest):
 
     def test_for_different_depth_backends(self):
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         self.setup_clients()

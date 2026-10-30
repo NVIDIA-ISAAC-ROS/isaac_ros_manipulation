@@ -1,9 +1,0 @@
-robotiq_gripper_controller:
-  ros__parameters:
-    default: true
-    joint: finger_joint
-    use_effort_interface: true
-    use_speed_interface: true
-    allow_stalling: true
-    stall_velocity_threshold: 0.001
-    stall_timeout: 2.0

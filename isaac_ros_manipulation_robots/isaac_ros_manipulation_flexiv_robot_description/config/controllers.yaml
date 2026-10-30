@@ -17,6 +17,16 @@ controller_manager:
     flexiv_robot_states_broadcaster:
       type: flexiv_robot_states_broadcaster/FlexivRobotStatesBroadcaster
 
+    # Only spawned when runtime_cartesian_switching is true, and then inactive, so
+    # a joint controller can hand command authority to Cartesian control without
+    # restarting the driver. Used by the task-space DisplayPort insertion policy.
+    cartesian_motion_controller:
+      type: cartesian_motion_controller/CartesianMotionController
+
+cartesian_motion_controller:
+  ros__parameters:
+    tcp_name: $(var robot_sn)_tcp
+
 rizon_arm_controller:
   ros__parameters:
     joints:

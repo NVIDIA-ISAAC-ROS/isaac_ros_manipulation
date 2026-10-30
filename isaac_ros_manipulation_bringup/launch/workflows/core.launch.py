@@ -17,7 +17,7 @@
 from isaac_ros_launch_utils import GroupAction
 
 from isaac_ros_manipulation_ros_python_utils import (
-    CoreConfig, DepthType, get_cumotion_node,
+    CameraType, CoreConfig, DepthType, get_cumotion_node,
     get_manipulation_container, get_nvblox_node, get_workflow_nodes
 )
 
@@ -70,16 +70,19 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'camera_type',
+            default_value=str(CameraType.REALSENSE),
             choices=['REALSENSE', 'ISAAC_SIM'],
             description='Camera sensor to use'
         ),
         DeclareLaunchArgument(
             'depth_type',
+            default_value=str(DepthType.REALSENSE),
             choices=DepthType.names(),
             description=f'Depth estimation type. Choose between {", ".join(DepthType.names())}'
         ),
         DeclareLaunchArgument(
             'num_cameras',
+            default_value='1',
             choices=['1', '2',],
             description='Num cameras'
         ),
@@ -97,19 +100,23 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'distance_threshold',
+            default_value='0.15',
             description='Maximum distance from a given collision sphere (in meters) at which'
                         'to mask points in the robot segmenter'
         ),
         DeclareLaunchArgument(
             'pose_estimation_input_qos',
+            default_value='SENSOR_DATA',
             description='QoS input profile for pose estimation input',
         ),
         DeclareLaunchArgument(
             'pose_estimation_input_fps',
+            default_value='15',
             description='FPS for input into pose estimation pipeline'
         ),
         DeclareLaunchArgument(
             'pose_estimation_dropped_fps',
+            default_value='10',
             description='Number of frames to drop before input into pose estimation pipeline'
         )
     ]

@@ -144,6 +144,18 @@ def plan_grasp(action_client: ActionClient,
                object_esdf_clearing_padding: Optional[List[float]] = None,
                update_planning_scene: bool = False,
                planning_scene_world: Optional[PlanningSceneWorld] = None,
+               plan_approach_to_grasp: bool = True,
+               plan_grasp_to_retract: bool = True,
+               grasp_translation_path_deviation_limit: float = 0.001,
+               grasp_translation_terminal_deviation_limit: float = -1.0,
+               grasp_enable_orientation_path_axis_constraint: bool = True,
+               grasp_orientation_path_axis_deviation_limit: float = -1.0,
+               grasp_orientation_terminal_deviation_limit: float = -1.0,
+               retract_translation_path_deviation_limit: float = 0.001,
+               retract_translation_terminal_deviation_limit: float = -1.0,
+               retract_enable_orientation_path_axis_constraint: bool = True,
+               retract_orientation_path_axis_deviation_limit: float = -1.0,
+               retract_orientation_terminal_deviation_limit: float = -1.0,
                timeout: float = 120.0) -> Any:
     """
     Plan a grasp motion including approach, grasp, and retract trajectories.
@@ -219,8 +231,8 @@ def plan_grasp(action_client: ActionClient,
     goal_msg.plan_cspace = False
     goal_msg.plan_pose = False
     goal_msg.plan_grasp = True
-    goal_msg.plan_approach_to_grasp = True
-    goal_msg.plan_grasp_to_retract = True
+    goal_msg.plan_approach_to_grasp = plan_approach_to_grasp
+    goal_msg.plan_grasp_to_retract = plan_grasp_to_retract
     goal_msg.time_dilation_factor = time_dilation_factor
     goal_msg.hold_partial_pose = False
 
@@ -229,21 +241,43 @@ def plan_grasp(action_client: ActionClient,
     grasp_offset_pose.position.x = grasp_approach_offset_distance[0]
     grasp_offset_pose.position.y = grasp_approach_offset_distance[1]
     grasp_offset_pose.position.z = grasp_approach_offset_distance[2]
+    grasp_offset_pose.orientation.w = 1.0
     goal_msg.grasp_offset_pose = grasp_offset_pose
-    # goal_msg.grasp_partial_pose_vec_weight = grasp_approach_path_constraint
+    goal_msg.grasp_translation_path_deviation_limit = grasp_translation_path_deviation_limit
+    goal_msg.grasp_translation_terminal_deviation_limit = \
+        grasp_translation_terminal_deviation_limit
+    goal_msg.grasp_enable_orientation_path_axis_constraint = \
+        grasp_enable_orientation_path_axis_constraint
+    goal_msg.grasp_orientation_path_axis_deviation_limit = \
+        grasp_orientation_path_axis_deviation_limit
+    goal_msg.grasp_orientation_terminal_deviation_limit = \
+        grasp_orientation_terminal_deviation_limit
 
     # Retract offset (orientation kept as identity)
     retract_offset_pose = Pose()
     retract_offset_pose.position.x = retract_offset_distance[0]
     retract_offset_pose.position.y = retract_offset_distance[1]
     retract_offset_pose.position.z = retract_offset_distance[2]
+    retract_offset_pose.orientation.w = 1.0
     goal_msg.retract_offset_pose = retract_offset_pose
-    # goal_msg.retract_partial_pose_vec_weight = retract_path_constraint
+    # Constrain the grasp-to-retract phase to a straight Cartesian line AND hold
+    # the tool orientation fixed along that line, so the plug lifts straight up
+    # (world +Z) instead of reorienting the wrist and dipping. Mirrors the tuned
+    # behavior-tree pick config. A negative value means "use the optimizer
+    # default" for that particular limit.
+    goal_msg.retract_translation_path_deviation_limit = retract_translation_path_deviation_limit
+    goal_msg.retract_translation_terminal_deviation_limit = \
+        retract_translation_terminal_deviation_limit
+    goal_msg.retract_enable_orientation_path_axis_constraint = \
+        retract_enable_orientation_path_axis_constraint
+    goal_msg.retract_orientation_path_axis_deviation_limit = \
+        retract_orientation_path_axis_deviation_limit
+    goal_msg.retract_orientation_terminal_deviation_limit = \
+        retract_orientation_terminal_deviation_limit
 
     goal_msg.grasp_approach_constraint_in_goal_frame = \
         grasp_approach_constraint_in_goal_frame
     goal_msg.retract_constraint_in_goal_frame = retract_constraint_in_goal_frame
-    # goal_msg.disable_collision_links = disable_collision_links
     goal_msg.object_frame = object_frame
     goal_msg.world_frame = world_frame
     goal_msg.mesh_resource = mesh_resource
@@ -340,7 +374,6 @@ def plan_to_pose(action_client: ActionClient,
     goal_msg.use_current_state = True
     goal_msg.time_dilation_factor = time_dilation_factor
     goal_msg.hold_partial_pose = False
-    # goal_msg.disable_collision_links = disable_collision_links
     goal_msg.mesh_resource = mesh_resource
     goal_msg.update_esdf = True
     goal_msg.enable_aabb_clearing = enable_aabb_clearing
@@ -432,7 +465,6 @@ def plan_to_joint_state(action_client: ActionClient,
     goal_msg.use_current_state = True
     goal_msg.time_dilation_factor = time_dilation_factor
     goal_msg.hold_partial_pose = False
-    # goal_msg.disable_collision_links = disable_collision_links
     goal_msg.mesh_resource = mesh_resource
     goal_msg.update_esdf = True
     goal_msg.enable_aabb_clearing = enable_aabb_clearing

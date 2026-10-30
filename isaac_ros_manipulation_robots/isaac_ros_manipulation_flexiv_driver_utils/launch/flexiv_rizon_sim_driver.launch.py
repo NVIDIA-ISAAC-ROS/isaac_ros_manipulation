@@ -60,6 +60,7 @@ def generate_launch_description():
     launch_args = [
         DeclareLaunchArgument(
             'log_level',
+            default_value='error',
             description='Log level of the container.',
             choices=['debug', 'info', 'warn', 'error']
         ),
@@ -71,6 +72,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'controller_spawner_timeout',
+            default_value='10',
             description='Timeout used when spawning controllers.',
         ),
         DeclareLaunchArgument(
@@ -92,7 +94,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'workflow_type',
             choices=['POSE_TO_POSE', 'PICK_AND_PLACE',
-                     'OBJECT_FOLLOWING', 'GEAR_ASSEMBLY'],
+                     'OBJECT_FOLLOWING', 'DISPLAYPORT_CABLE_INSERTION'],
             description='Type of workflow to run',
         ),
         DeclareLaunchArgument(

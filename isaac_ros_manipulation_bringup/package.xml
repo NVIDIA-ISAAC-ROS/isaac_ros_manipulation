@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_manipulation_bringup</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>Reference example package for Isaac ROS Manipulation</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
@@ -34,13 +34,9 @@ SPDX-License-Identifier: Apache-2.0
   <depend>isaac_ros_manipulation_asset_bringup</depend>
   <depend>isaac_ros_manipulation_ros_python_utils</depend>
   <depend>isaac_ros_manipulation_orchestration</depend>
-  <depend>isaac_ros_manipulation_pick_and_place</depend>
-  <depend>isaac_ros_manipulation_ur_robot_description</depend>
   <depend>isaac_ros_manipulation_servers</depend>
-  <depend>isaac_ros_manipulation_dnn_policy</depend>
-  <depend>isaac_ros_manipulation_gear_assembly</depend>
-  <depend>isaac_ros_manipulation_ur_isaac_sim_utils</depend>
-  <depend>isaac_ros_manipulation_ur_driver_utils</depend>
+  <depend>isaac_ros_manipulation_contact_rich_insertion</depend>
+  <depend>isaac_ros_deploy_reference_applications</depend>
   <depend>isaac_ros_cumotion</depend>
   <depend>isaac_ros_cumotion_examples</depend>
   <depend>isaac_ros_cumotion_interfaces</depend>
@@ -55,10 +51,8 @@ SPDX-License-Identifier: Apache-2.0
   <depend>isaac_ros_grounding_dino</depend>
   <depend>isaac_ros_image_proc</depend>
   <depend>isaac_ros_launch_utils</depend>
-  <depend>isaac_ros_manipulation_object_following</depend>
-  <depend>isaac_ros_manipulation_pose_to_pose</depend>
   <depend>isaac_ros_nitros_bridge_ros2</depend>
-  <depend>isaac_ros_nitros_topic_tools</depend>
+  <depend>isaac_ros_topic_tools</depend>
   <depend>isaac_ros_pose_proc</depend>
   <depend>isaac_ros_rtdetr</depend>
   <depend>isaac_ros_segment_anything</depend>
@@ -80,6 +74,8 @@ SPDX-License-Identifier: Apache-2.0
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>isaac_ros_manipulation_flexiv_driver_utils</exec_depend>
   <exec_depend>isaac_ros_manipulation_flexiv_robot_description</exec_depend>
+  <exec_depend>isaac_ros_cumotion_robot_description</exec_depend>
+  <exec_depend>isaac_ros_dnn_image_encoder</exec_depend>
 
   <test_depend>isaac_ros_test_cmake</test_depend>
   <test_depend>ament_lint_auto</test_depend>

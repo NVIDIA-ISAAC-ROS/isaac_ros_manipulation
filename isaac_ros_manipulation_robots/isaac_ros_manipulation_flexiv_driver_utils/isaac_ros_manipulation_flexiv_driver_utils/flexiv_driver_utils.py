@@ -23,6 +23,7 @@ from isaac_ros_manipulation_flexiv_driver_utils.config import (
     FlexivRizonDriverConfig
 )
 from isaac_ros_manipulation_flexiv_driver_utils.prefix_utils import (
+    apply_calibrated_joint_origins,
     apply_joint_prefix,
 )
 from isaac_ros_manipulation_flexiv_driver_utils.robot_description import (
@@ -208,8 +209,19 @@ class FlexivDriverUtils(RobotControllerBase):
         cumotion_desc_dir = get_package_share_directory(
             CUMOTION_DESCRIPTION_PKG)
         prefix = f'{robot_sn}_'
+        urdf_template = os.path.join(
+            cumotion_desc_dir, 'urdf', 'flexiv_rizon4s_grav.urdf')
+
+        calibrated_kinematics = self.driver_config.calibrated_kinematics_path
+        if calibrated_kinematics and os.path.isfile(calibrated_kinematics):
+            urdf_template = apply_calibrated_joint_origins(
+                urdf_template,
+                calibrated_kinematics,
+                '/tmp/flexiv_rizon4s_grav_calibrated.urdf',
+            )
+
         apply_joint_prefix(
-            os.path.join(cumotion_desc_dir, 'urdf', 'flexiv_rizon4s_grav.urdf'),
+            urdf_template,
             prefix,
             '/tmp/flexiv_rizon4s_grav_prefixed.urdf',
         )
@@ -402,7 +414,7 @@ class FlexivDriverUtils(RobotControllerBase):
 
         Returns
         -------
-            List[RegisterEventHandler]: Six event handlers wiring the
+            List[RegisterEventHandler]: Seven event handlers wiring the
             sequence described above.
 
         Raises
@@ -444,6 +456,12 @@ class FlexivDriverUtils(RobotControllerBase):
                 on_exit=[streaming_controller],
             )
         )
+        delay_cartesian_motion_controller = RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=robot_controller,
+                on_exit=[spawners['cartesian_motion_controller']],
+            )
+        )
         delay_move_group = RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=robot_controller,
@@ -467,6 +485,7 @@ class FlexivDriverUtils(RobotControllerBase):
             delay_gripper_after_broadcaster,
             delay_robot_controller,
             delay_streaming_controller,
+            delay_cartesian_motion_controller,
             delay_move_group,
             delay_rviz,
             delay_visualization_rviz,
@@ -494,6 +513,7 @@ class FlexivDriverUtils(RobotControllerBase):
             output='screen',
             parameters=[
                 {'robot_description': robot_description_contents,
+                 'publish_robot_description': True,
                  'use_sim_time': driver_config.use_sim_time}
             ],
             remappings=remappings,
@@ -548,10 +568,18 @@ class FlexivDriverUtils(RobotControllerBase):
 
     def _get_sim_robot_control_nodes(self) -> List[Node]:
         driver_config = self.driver_config
+        robot_description = {
+            'robot_description': get_robot_description_contents_for_sim(
+                urdf_xacro_file=driver_config.urdf_path,
+                rizon_type=driver_config.rizon_type,
+                use_sim_time=driver_config.use_sim_time,
+            )
+        }
         ros2_control_node = Node(
             package='controller_manager',
             executable='ros2_control_node',
             parameters=[
+                robot_description,
                 ParameterFile(
                     driver_config.ros2_controllers_file_path,
                     allow_substs=True),
@@ -571,6 +599,9 @@ class FlexivDriverUtils(RobotControllerBase):
         scaled_joint_trajectory_controller_spawner = Node(
             package='controller_manager',
             executable='spawner',
+            parameters=[
+                ParameterFile(driver_config.ros2_controllers_file_path, allow_substs=True)
+            ],
             arguments=[
                 'scaled_joint_trajectory_controller',
                 '-c', '/controller_manager'
@@ -579,15 +610,25 @@ class FlexivDriverUtils(RobotControllerBase):
         joint_state_broadcaster_spawner = Node(
             package='controller_manager',
             executable='spawner',
+            parameters=[
+                ParameterFile(driver_config.ros2_controllers_file_path, allow_substs=True)
+            ],
             arguments=[
                 'joint_state_broadcaster',
                 '--controller-manager', '/controller_manager',
             ],
         )
+        delay_scaled_controller_after_broadcaster = RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=joint_state_broadcaster_spawner,
+                on_exit=[scaled_joint_trajectory_controller_spawner],
+            )
+        )
+
         return [
             ros2_control_node,
-            scaled_joint_trajectory_controller_spawner,
             joint_state_broadcaster_spawner,
+            delay_scaled_controller_after_broadcaster,
         ]
 
     # ------------------------------------------------------------------
@@ -616,12 +657,11 @@ class FlexivDriverUtils(RobotControllerBase):
             'robot_description_semantic': get_srdf_contents_for_real(
                 driver_config)
         }
-        kinematics_path = os.path.join(
-            get_package_share_directory(FLEXIV_MOVEIT_CONFIG_PKG),
-            'config', 'kinematics.yaml',
+        robot_description_kinematics = load_yaml_with_robot_sn(
+            FLEXIV_MOVEIT_CONFIG_PKG,
+            'config/kinematics.yaml',
+            driver_config.robot_sn,
         )
-        with open(kinematics_path) as f:
-            robot_description_kinematics = yaml.safe_load(f)
         joint_limits_yaml = {
             'robot_description_planning': load_yaml_with_robot_sn(
                 FLEXIV_MOVEIT_CONFIG_PKG,
@@ -649,7 +689,7 @@ class FlexivDriverUtils(RobotControllerBase):
             'moveit_manage_controllers': False,
             'trajectory_execution.allowed_execution_duration_scaling': 1.2,
             'trajectory_execution.allowed_goal_duration_margin': 0.5,
-            'trajectory_execution.allowed_start_tolerance': 0.01,
+            'trajectory_execution.allowed_start_tolerance': 0.05,
         }
         planning_scene_monitor_parameters = {
             'publish_planning_scene': True,
@@ -715,17 +755,26 @@ class FlexivDriverUtils(RobotControllerBase):
                 'rate': 30,
             }],
         )
+        # The spawner forwards this config to the controller node; without it the
+        # controller starts with no 'joints' and fails to initialize.
+        # The ros2_control_node remapping does not reach controller nodes, so the remap is passed
+        # to the broadcaster here. Without it the broadcaster publishes /joint_states directly,
+        # joint_state_publisher never receives arm data, and /joint_states interleaves the real
+        # arm state with an all-zeros arm at 30 Hz.
         joint_state_broadcaster_spawner = Node(
             package='controller_manager',
             executable='spawner',
+            parameters=[ParameterFile(robot_controllers, allow_substs=True)],
             arguments=[
                 'joint_state_broadcaster',
                 '--controller-manager', '/controller_manager',
+                '--controller-ros-args', '-r joint_states:=flexiv_arm/joint_states',
             ],
         )
         robot_controller_spawner = Node(
             package='controller_manager',
             executable='spawner',
+            parameters=[ParameterFile(robot_controllers, allow_substs=True)],
             arguments=[
                 'rizon_arm_controller',
                 '--controller-manager', '/controller_manager',
@@ -736,11 +785,28 @@ class FlexivDriverUtils(RobotControllerBase):
         streaming_controller_spawner = Node(
             package='controller_manager',
             executable='spawner',
+            parameters=[ParameterFile(robot_controllers, allow_substs=True)],
             arguments=[
                 'streaming_position_controller',
                 '--controller-manager', '/controller_manager',
                 '--inactive',
             ],
+        )
+        # Loaded only when the driver is prepared to borrow
+        # RT_CARTESIAN_MOTION_FORCE at runtime. Spawned ``--inactive`` so it
+        # claims no command interfaces until the insertion orchestrator
+        # explicitly switches to it for the task-space policy; the arm stays
+        # under the joint trajectory controller for cuMotion up to that point.
+        cartesian_motion_controller_spawner = Node(
+            package='controller_manager',
+            executable='spawner',
+            parameters=[ParameterFile(robot_controllers, allow_substs=True)],
+            arguments=[
+                'cartesian_motion_controller',
+                '--controller-manager', '/controller_manager',
+                '--inactive',
+            ],
+            condition=IfCondition(driver_config.runtime_cartesian_switching),
         )
         flexiv_robot_states_broadcaster_spawner = Node(
             package='controller_manager',
@@ -765,6 +831,7 @@ class FlexivDriverUtils(RobotControllerBase):
             'joint_state_broadcaster': joint_state_broadcaster_spawner,
             'robot_controller': robot_controller_spawner,
             'streaming_controller': streaming_controller_spawner,
+            'cartesian_motion_controller': cartesian_motion_controller_spawner,
         }
 
         return [
@@ -779,7 +846,7 @@ class FlexivDriverUtils(RobotControllerBase):
 def get_isaac_sim_joint_parser_node(use_sim_time: bool) -> Node:
     """Return Isaac Sim joint parser node for the Flexiv Rizon."""
     return Node(
-        package='isaac_ros_manipulation_flexiv_driver_utils',
+        package='isaac_ros_manipulation_flexiv_isaac_sim_utils',
         executable='isaac_sim_joint_parser_node.py',
         name='joint_parser',
         output='screen',
@@ -791,7 +858,7 @@ def get_isaac_sim_joint_parser_node(use_sim_time: bool) -> Node:
 def get_grav_gripper_node(use_sim_time: bool) -> Node:
     """Return the Grav gripper action server for Isaac Sim."""
     return Node(
-        package='isaac_ros_manipulation_flexiv_driver_utils',
+        package='isaac_ros_manipulation_flexiv_isaac_sim_utils',
         executable='isaac_sim_grav_gripper_driver.py',
         name='isaac_sim_grav_gripper_action_server',
         output='screen',

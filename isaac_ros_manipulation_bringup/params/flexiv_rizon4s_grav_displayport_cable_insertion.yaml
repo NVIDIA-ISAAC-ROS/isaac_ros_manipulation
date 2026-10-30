@@ -1,0 +1,198 @@
+camera_type: REALSENSE
+num_cameras: 1
+workflow_type: DISPLAYPORT_CABLE_INSERTION
+robot_type: FLEXIV
+
+rizon_type: Rizon4s
+gripper_type: grav
+use_sim_time: 'false'
+headless: 'false'
+setup: flexiv_test_bench
+robot_ip: 192.168.1.102
+log_level: error
+
+# Flexiv-specific params
+robot_sn: 'Rizon4s-063459'
+use_fake_hardware: 'false'
+load_gripper: 'true'
+start_rviz: 'true'
+rdk_control_mode: joint_impedance
+
+robot_launch_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_driver_utils)/launch/flexiv_rizon_real_driver.launch.py
+moveit_collision_objects_scene_file: $(ros2 pkg prefix --share isaac_ros_manipulation_bringup)/config/scene_objects/flexiv_test_bench/flexiv_test_scene_objects.scene
+
+urdf_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/urdf/rizon_grav.urdf.xacro
+srdf_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/srdf/rizon_grav.srdf.xacro
+joint_limits_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/joint_limits.yaml
+kinematics_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/kinematics_sim.yaml
+moveit_controllers_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/moveit_sim_controllers.yaml
+ros2_controllers_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/ros2_control_controllers_sim.yaml
+controller_spawner_timeout: 10
+tf_prefix: ''
+initial_joint_controller: 'rizon_arm_controller'
+ur_calibration_file_path: ''
+
+cumotion_urdf_file_path: /tmp/flexiv_rizon4s_grav_prefixed.urdf
+cumotion_xrdf_file_path: /tmp/flexiv_rizon4s_grav_prefixed.xrdf
+cumotion_joint_states_topic: /joint_states
+distance_threshold: 0.05
+enable_nvblox: 'false'
+nvblox_global_frame: 'world'
+
+rviz_config_file: $(ros2 pkg prefix --share isaac_ros_manipulation_bringup)/config/visualization/pick_and_place.rviz
+use_pose_from_rviz: 'false'
+time_sync_slop: 0.1
+
+# Perception
+depth_type: REALSENSE
+enable_dnn_depth_in_realsense: 'false'
+object_detection_type: SEGMENT_ANYTHING
+selection_policy: HIGHEST_SCORE
+segmentation_type: SEGMENT_ANYTHING
+segment_anything_input_points_topic: input_points
+segment_anything_input_detections_topic: input_detections
+segment_anything_enable_debug_output: 'false'
+sam_model_repository_paths: ['$ISAAC_ROS_WS/isaac_ros_assets/models/triton']
+ess_full_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/dnn_stereo_disparity/dnn_stereo_disparity_v4.1.0_onnx_trt10.16/ess.engine
+ess_light_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/dnn_stereo_disparity/dnn_stereo_disparity_v4.1.0_onnx_trt10.16/light_ess.engine
+foundationstereo_low_res_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/foundationstereo/deployable_v2.0/foundationstereo_320x736.engine
+foundationstereo_high_res_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/foundationstereo/deployable_v2.0/foundationstereo_576x960.engine
+pose_estimation_type: FOUNDATION_POSE
+pose_estimation_input_qos: 'SENSOR_DATA'
+pose_estimation_input_fps: '15'
+pose_estimation_dropped_fps: '10'
+dope_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/dope/soup_can.engine
+dope_model_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/dope/soup_can.onnx
+
+foundation_pose_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation/displayport_insertion/dp_socket/dp_socket.obj
+foundation_pose_refine_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan
+foundation_pose_texture_path: ''
+foundation_pose_score_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan
+
+grounding_dino_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/grounding_dino/grounding_dino_model.plan
+grounding_dino_model_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/grounding_dino/grounding_dino_model.onnx
+grounding_dino_default_prompt: 'displayport socket.'
+grounding_dino_confidence_threshold: '0.6'
+grounding_dino_network_image_width: '960'
+grounding_dino_network_image_height: '544'
+
+rtdetr_engine_file_path: $ISAAC_ROS_WS/isaac_ros_assets/models/synthetica_detr/sdetr_grasp.plan
+object_class_id: '3'
+rt_detr_confidence_threshold: '0.5'
+
+# Pick and place params
+use_ground_truth_pose_in_sim: 'false'
+pick_and_place_planner_retries: 5
+pick_and_place_retry_wait_time: 5.0
+sim_gt_asset_frame_id: 'displayport_cable'
+grasps_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/grav_grasps_dp_plug.yaml
+time_dilation_factor: '0.25'
+# Grasp force (GripperCommand max_effort) applied when closing the gripper on the
+# plug. Higher = tighter grip. Real Flexiv Grav only; sim ignores it. Default 10.0.
+gripper_max_effort: 80.0
+gripper_close_position: 0.004
+move_to_home_pose_after_place: 'false'
+home_pose: [-0.25, 0.2, 0.4, 0.034, 0.996, 0.066, 0.042]
+
+object_attachment_type: CUSTOM_MESH
+object_attachment_scale: [1.0, 1.0, 1.0]
+attach_object_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation/displayport_insertion/dp_plug/dp_plug.obj
+end_effector_mesh_resource_uri: ''
+
+enable_rviz_visualization: 'true'
+enable_foxglove_visualization: 'false'
+
+behavior_tree_config_file: ${ISAAC_ROS_MANIPULATION_PICK_AND_PLACE_CONFIG_DIR}/flexiv_pick_and_place_behavior_tree_params.yaml
+blackboard_config_file: ${ISAAC_ROS_MANIPULATION_PICK_AND_PLACE_CONFIG_DIR}/flexiv_pick_and_place_blackboard_params.yaml
+print_ascii_tree: 'false'
+manual_mode: 'false'
+
+delay_to_start_nsight: '5'
+nsight_profile_duration: '20'
+nsight_profile_output_file_path: $ISAAC_ROS_WS/nsight_profile.nsys
+enable_nsight_profiling: 'false'
+enable_system_wide_profiling: 'false'
+
+enable_cuda_mps: 'false'
+cuda_mps_pipe_directory: $ISAAC_ROS_WS/mps_pipe_dir
+cuda_mps_active_thread_percentage_container: '100'
+cuda_mps_client_priority_container: '1'
+cuda_mps_client_priority_robot_segmenter: '1'
+cuda_mps_active_thread_percentage_robot_segmenter: '100'
+cuda_mps_client_priority_planner: '0'
+cuda_mps_active_thread_percentage_planner: '100'
+
+# DisplayPort cable insertion parameters. The learned insertion policy runs through Isaac ROS Deploy.
+# Task-space policy: observes EEF/socket poses and emits Cartesian deltas to the Flexiv Cartesian
+# motion controller instead of the joint-space Deploy controllers. Needs runtime_cartesian_switching.
+displayport_insertion_use_task_space_policy: 'true'
+runtime_cartesian_switching: 'true'
+# Flange->TCP offset the policy was trained against; the decoder inverts it.
+displayport_insertion_task_space_tcp_offset: 0.0,0.0,0.1925
+# Flexiv's active-tool offset -- the frame Cartesian commands are expressed in. MEASURE THIS from the
+# flange/TCP pose topics; empty falls back to the policy offset and biases every command.
+displayport_insertion_task_space_adapter_tcp_offset: 0.0,0.0,0.15
+# Scales the policy's Cartesian delta. Read once at decoder startup; `ros2 param set` is ignored.
+displayport_insertion_task_space_action_blend_ratio: 0.15
+displayport_insertion_task_space_socket_pose_topic: /displayport_socket_pose
+displayport_insertion_task_space_enable_topic: /displayport_task_space_policy/enable_passthrough
+displayport_insertion_task_space_cartesian_controller_name: cartesian_motion_controller
+displayport_insertion_task_space_cartesian_stiffness: [1000.0, 1000.0, 1000.0, 150.0, 150.0, 150.0]
+displayport_insertion_task_space_cartesian_damping_ratio: [0.7, 0.7, 0.7, 0.7, 0.7, 0.7]
+# After the policy finishes and the joint controller has authority back: release, then retract.
+displayport_insertion_task_space_release_after_insertion: 'true'
+displayport_insertion_task_space_return_home_after_insertion: 'true'
+# Retract pose [x, y, z, qx, qy, qz, qw] in the base frame. Empty ([]) falls back to `home_pose`.
+displayport_insertion_task_space_home_pose: [0.475, 0.125, 0.5, 0.7071067811865476, 0.7071067811865476, 0.0, 0.0]
+displayport_insertion_deploy_config_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation/displayport_insertion/flexiv_policy/DisplayPortTaskSpace.yaml
+displayport_insertion_goal_pose_topic: /displayport_insertion/goal_pose
+displayport_insertion_goal_pose_publish_rate_hz: 15.0
+displayport_insertion_deploy_decimation: 1
+displayport_insertion_deploy_inference_controller_name: deploy_inference_controller
+displayport_insertion_deploy_safety_controller_name: deploy_safety_controller
+displayport_insertion_deploy_normal_controller_name: rizon_arm_controller
+displayport_insertion_deploy_controller_switch_timeout_sec: 60.0
+# Deploy launches the SafetyController with blend_ratio=0.0. The orchestrator
+# switches to Deploy control, ramps to this target, then starts publishing goals.
+displayport_insertion_deploy_blend_ratio: 1.0
+displayport_insertion_deploy_max_blend_ratio_speed: 1.0
+displayport_insertion_deploy_pre_goal_wait_sec: 0.25
+displayport_insertion_enable_controller_switching: 'true'
+# Joint-space policy start pose used by the orchestrator for the approach to insertion.
+displayport_insertion_policy_home_joint_position: [0.5661848093469605, -0.2916445180082525, -0.09930923443847736, 2.2406536937103203, 0.11763519158441782, 0.9765117164908275, 1.9467402476744753]
+displayport_insertion_use_joint_state_planner: 'true'
+displayport_insertion_socket_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation/displayport_insertion/dp_socket/dp_socket.obj
+displayport_insertion_cable_mesh_file_path: $ISAAC_ROS_WS/isaac_ros_assets/isaac_ros_manipulation/displayport_insertion/dp_plug/dp_plug.obj
+displayport_insertion_cable_grasps_file_path: $(ros2 pkg prefix --share isaac_ros_manipulation_flexiv_robot_description)/config/grav_grasps_dp_plug.yaml
+displayport_insertion_manual_grasp_mode: 'false'
+# Manual pose workflow: skip SAM/FoundationPose and use YAML plug + socket poses in the
+# robot base frame as [x, y, z, qx, qy, qz, qw].
+displayport_insertion_use_manual_poses: 'true'
+displayport_insertion_manual_plug_pose: [0.481, -0.07, 0.021, 0.0, 0.0, 0.0, 1.0]
+displayport_insertion_manual_socket_pose: [0.474, 0.127, 0.07, 0.5, 0.5, 0.5, -0.5]
+# Vision workflow only: fixed rotation [qx, qy, qz, qw] applied in the plug's own frame to the
+# FoundationPose estimate, so the published plug frame matches the convention the grasp file is
+# authored against (+Z up out of the plug, +X along the cable exit).
+displayport_insertion_plug_orientation_correction: [0.7071067811865476, 0.7071067811865476, 0.0, 0.0]
+# FoundationPose reports the socket mesh frame, rolled 180 deg about its X (insertion) axis
+# relative to the convention the policy is authored against.
+displayport_insertion_socket_orientation_correction: [1.0, 0.0, 0.0, 0.0]
+# Mesh origin (body centre) -> mate point, along the corrected frame's X axis. The mesh rim is at
+# 37.5 mm; the extra 15.5 mm is unexplained and calibrated against the known-good manual pose.
+displayport_insertion_socket_mate_offset: [0.053, 0.0, 0.0]
+# Run Deploy insertion after vision-guided socket/plug estimation and pick-to-hover.
+displayport_insertion_run_rl_inference: 'true'
+displayport_insertion_output_dir: $ISAAC_ROS_WS/displayport_insertion_outputs
+displayport_insertion_offset_for_hover_pose: 0.24
+# Fixed hover position in robot base frame as [x, y, z] (meters).
+# Leave empty ([]) to derive the hover position from the socket pose
+# (socket x/y, socket z + offset_for_hover_pose). When set, this overrides the
+# hover position while the socket pose is still used independently (e.g. as the
+# Deploy insertion goal).
+displayport_insertion_hover_pose_position: [0.474, 0.127, 0.3]
+# Fixed hover orientation in robot base frame as [qx, qy, qz, qw].
+# Leave empty ([]) to keep the socket orientation.
+displayport_insertion_hover_pose_orientation: [0.7071067811865476, 0.7071067811865476, 0.0, 0.0]
+displayport_insertion_timeout_for_insertion_action_call: 10.0
+displayport_insertion_socket_tf_frame: displayport_socket_frame
+displayport_insertion_task_space_cartesian_impedance_service_name: /Rizon4s_063459_flexiv_cartesian_config/set_cartesian_impedance
