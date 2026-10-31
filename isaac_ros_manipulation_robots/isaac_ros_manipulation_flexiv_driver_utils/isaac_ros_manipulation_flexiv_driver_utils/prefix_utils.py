@@ -28,6 +28,9 @@ with the same names that MoveIt / ros2_control expect.
 import os
 import re
 from typing import Optional
+from xml.etree import ElementTree
+
+import yaml
 
 # Every joint/link name that appears in the Flexiv Rizon + Grav cuMotion
 # URDF/XRDF templates.  ``world`` is deliberately excluded because the
@@ -94,4 +97,72 @@ def apply_joint_prefix(
     with open(output_path, 'w') as f:
         f.write(content)
 
+    return output_path
+
+
+def apply_calibrated_joint_origins(
+    template_path: str,
+    kinematics_yaml_path: str,
+    output_path: str,
+) -> str:
+    """
+    Apply a robot's calibrated joint origins to the cuMotion URDF template.
+
+    ``flexiv_calibration`` syncs a connected robot's measured kinematics into the
+    YAML that ``flexiv_description`` loads, which fixes the driver's description
+    but not cuMotion's -- cuMotion plans from its own URDF in
+    ``isaac_ros_cumotion_robot_description``. Reading the same YAML here keeps the
+    planner and the published TF on one calibration source.
+
+    The YAML holds ``x/y/z/roll/pitch/yaw`` per joint, which
+    ``flexiv_common.xacro`` writes verbatim into the joint ``<origin>``; the
+    cuMotion template uses the same convention and values, so they transfer
+    directly. Joint axes are structural and are left alone.
+
+    Only joints that are direct children of ``<robot>`` and carry both a
+    ``<parent>`` and an ``<origin>`` are touched, so the ``ros2_control`` blocks
+    -- which reuse the same joint names -- are left alone. Joints absent from the
+    YAML, including the whole gripper subtree, keep their template values.
+
+    Parameters
+    ----------
+    template_path : str
+        Nominal cuMotion URDF to update.
+    kinematics_yaml_path : str
+        Kinematics YAML written by ``flexiv_calibration``.
+    output_path : str
+        Where to write the merged URDF.
+
+    Returns
+    -------
+    str
+        ``output_path``.
+
+    """
+    with open(kinematics_yaml_path, 'r') as handle:
+        calibrated = (yaml.safe_load(handle) or {}).get('kinematics') or {}
+    if not calibrated:
+        raise ValueError(
+            f'{kinematics_yaml_path} has no "kinematics" section; expected a file '
+            'produced by flexiv_calibration')
+
+    tree = ElementTree.parse(template_path)
+    updated = 0
+    for joint in tree.getroot().findall('joint'):
+        if joint.find('parent') is None or joint.find('origin') is None:
+            continue
+        values = calibrated.get(joint.get('name'))
+        if not values:
+            continue
+        origin = joint.find('origin')
+        origin.set('xyz', ' '.join(
+            repr(float(values[axis])) for axis in ('x', 'y', 'z')))
+        origin.set('rpy', ' '.join(
+            repr(float(values[angle])) for angle in ('roll', 'pitch', 'yaw')))
+        updated += 1
+    if not updated:
+        raise ValueError(
+            f'No joints in common between {template_path} and {kinematics_yaml_path}; '
+            'the calibration does not match this robot description')
+    tree.write(output_path)
     return output_path

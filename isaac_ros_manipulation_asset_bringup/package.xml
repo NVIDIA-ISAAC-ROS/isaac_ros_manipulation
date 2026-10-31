@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_manipulation_asset_bringup</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>Asset bringup package for Isaac ROS Manipulation</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
@@ -31,6 +31,10 @@ SPDX-License-Identifier: Apache-2.0
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
   <depend>isaac_ros_dope</depend>
+  <!-- setup_perception_models.py runs `ros2 run` against both packages to
+       convert the SAM and SAM2 checkpoints. -->
+  <depend>isaac_ros_segment_anything</depend>
+  <depend>isaac_ros_segment_anything2</depend>
   <depend>rclcpp_action</depend>
   <depend>yaml_cpp_vendor</depend>
 
@@ -48,7 +52,6 @@ SPDX-License-Identifier: Apache-2.0
   <build_depend>isaac_ros_foundationstereo_models_install</build_depend>
   <build_depend>isaac_ros_grounding_dino_models_install</build_depend>
   <build_depend>isaac_ros_rtdetr_models_install</build_depend>
-  <build_depend>isaac_ros_segment_anything</build_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

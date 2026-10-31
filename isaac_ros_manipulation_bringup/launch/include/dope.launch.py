@@ -110,12 +110,8 @@ def generate_launch_description():
     dope_max_workspace_size = LaunchConfiguration('dope_max_workspace_size')
     input_tensor_names = LaunchConfiguration('input_tensor_names', default='["input_tensor"]')
     input_binding_names = LaunchConfiguration('input_binding_names', default='["input"]')
-    input_tensor_formats = LaunchConfiguration(
-        'input_tensor_formats', default='["nitros_tensor_list_nchw_rgb_f32"]')
     output_tensor_names = LaunchConfiguration('output_tensor_names', default='["output"]')
     output_binding_names = LaunchConfiguration('output_binding_names', default='["output"]')
-    output_tensor_formats = LaunchConfiguration(
-        'output_tensor_formats', default='["nitros_tensor_list_nhwc_rgb_f32"]')
     tensorrt_verbose = LaunchConfiguration('tensorrt_verbose', default='False')
     force_engine_update = LaunchConfiguration('force_engine_update', default='False')
 
@@ -163,8 +159,8 @@ def generate_launch_description():
 
     drop_node = ComposableNode(
         name='dope_drop_node',
-        package='isaac_ros_nitros_topic_tools',
-        plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
+        package='isaac_ros_topic_tools',
+        plugin='nvidia::isaac_ros::topic_tools::CameraDropNode',
         parameters=[{
             'X': dropped_fps,
             'Y': input_fps,
@@ -191,10 +187,8 @@ def generate_launch_description():
         parameters=[{
             'model_file_path': dope_model_file_path,
             'engine_file_path': dope_engine_file_path,
-            'input_tensor_formats': input_tensor_formats,
             'input_tensor_names': input_tensor_names,
             'input_binding_names': input_binding_names,
-            'output_tensor_formats': output_tensor_formats,
             'output_tensor_names': output_tensor_names,
             'output_binding_names': output_binding_names,
             'verbose': tensorrt_verbose,

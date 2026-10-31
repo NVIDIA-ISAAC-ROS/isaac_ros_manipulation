@@ -1,8 +1,0 @@
-# Request
-# List of objects to clear from cache. If object_ids are left empty, all the objects in the cache
-# will get removed
-int32[] object_ids
----
-# Response
-# Count of number of objects that gets removed from the cache
-int32 count

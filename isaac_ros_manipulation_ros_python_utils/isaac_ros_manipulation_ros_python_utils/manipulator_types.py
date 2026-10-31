@@ -103,7 +103,7 @@ class TrackingType(ManipulatorEnum):
     NONE = 0
     POSE_TO_POSE = 1
     OBJECT_FOLLOWING = 2
-    GEAR_ASSEMBLY = 3
+    DISPLAYPORT_INSERTION = 4
 
 
 class PoseEstimationType(ManipulatorEnum):
@@ -199,7 +199,7 @@ class WorkflowType(enum.Enum):
     POSE_TO_POSE = 'POSE_TO_POSE'
     PICK_AND_PLACE = 'PICK_AND_PLACE'
     OBJECT_FOLLOWING = 'OBJECT_FOLLOWING'
-    GEAR_ASSEMBLY = 'GEAR_ASSEMBLY'
+    DISPLAYPORT_CABLE_INSERTION = 'DISPLAYPORT_CABLE_INSERTION'
 
 
 class RobotType(ManipulatorEnum):

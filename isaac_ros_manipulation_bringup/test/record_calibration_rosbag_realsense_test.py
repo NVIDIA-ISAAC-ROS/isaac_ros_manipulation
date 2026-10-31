@@ -22,7 +22,8 @@ import time
 
 from ament_index_python.packages import get_package_share_directory
 from isaac_ros_manipulation_ros_python_utils import (
-    get_params_from_config_file_set_in_env
+    CameraType, get_calibration_parameters, get_params_from_config_file_set_in_env,
+    get_workflow_type
 )
 from isaac_ros_test import (
     IsaacROSBaseTest
@@ -75,7 +76,7 @@ class RosBagRecorderWaitNSecondsTest(IsaacROSBaseTest):
     def test_rosbag_recording(self):
         """Test that the ROS bag is recorded for the given duration."""
         if not self._run_test:
-            self.node.get_logger().warn('RUN_TEST is not set to true')
+            self.node.get_logger().warning('RUN_TEST is not set to true')
             return
 
         time.sleep(self._wait_time_for_rosbag_recording_seconds)
@@ -96,15 +97,23 @@ def generate_test_description():
     sensor_include_dir = os.path.join(
         get_package_share_directory('isaac_ros_manipulation_bringup'),
         'launch', 'sensors')
+    realsense_include_dir = os.path.join(
+        get_package_share_directory('isaac_ros_manipulation_bringup'),
+        'launch', 'include')
 
     params = get_params_from_config_file_set_in_env(RUN_TEST)
 
     # Override params to be PICK and PLACE
+    # Depth type comes from the test config YAML. REALSENSE uses the camera's native depth
+    # (no ESS engine needed); ESS/FoundationStereo run DNN depth and record the dropped infra
+    # streams instead.
+    depth_type = str(params.get('depth_type', 'REALSENSE')).upper()
+    use_native_depth = depth_type == 'REALSENSE'
     override_params = {
         'camera_type': 'REALSENSE',
         'num_cameras': '1',
-        'enable_dnn_depth_in_realsense': 'true',
-        'depth_type': 'ESS_FULL',
+        'enable_dnn_depth_in_realsense': 'false' if use_native_depth else 'true',
+        'depth_type': depth_type,
         'headless': 'true'
     }
     params.update(override_params)
@@ -125,10 +134,33 @@ def generate_test_description():
                 [isaac_ros_manipulation_workflow_bringup_include_dir,
                  '/manipulation_container.launch.py']),
             launch_arguments={key: str(value) for key, value in params.items()}.items()))
-        test_nodes.append(IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [sensor_include_dir, '/cameras.launch.py']),
-            launch_arguments={key: str(value) for key, value in params.items()}.items()))
+        if use_native_depth:
+            # The validator needs the infra1/infra2 stereo images, which the RealSense driver
+            # only publishes (as *_drop topics) in its DNN-depth mode. Launch the driver in that
+            # mode directly, without the ESS node, so no engine file is needed and native
+            # aligned depth is still published.
+            test_nodes.append(IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [realsense_include_dir, '/realsense.launch.py']),
+                launch_arguments={
+                    'num_cameras': '1',
+                    'camera_ids_config_name': str(params['setup']),
+                    'enable_dnn_depth_in_realsense': 'True',
+                    'enable_depth': 'True',
+                }.items()))
+            test_nodes += get_calibration_parameters(
+                get_workflow_type(str(params['workflow_type'])),
+                use_sim_time=False,
+                camera_type=CameraType.REALSENSE,
+                setup=str(params['setup']),
+                num_cameras=1,
+                gripper_type=str(params['gripper_type']),
+                robot_type=str(params.get('robot_type', 'UR')))
+        else:
+            test_nodes.append(IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [sensor_include_dir, '/cameras.launch.py']),
+                launch_arguments={key: str(value) for key, value in params.items()}.items()))
 
         timestamped_ros_bag_folder_path = os.path.join(
             ROS_BAG_OUTPUT_DIR,
@@ -136,8 +168,12 @@ def generate_test_description():
         test_nodes.append(
             ExecuteProcess(
                 cmd=[
-                    'ros2', 'bag', 'record', '--storage', 'mcap',
+                    'ros2', 'bag', 'record',
+                    '--storage', 'mcap',
                     '--output', timestamped_ros_bag_folder_path,
+                    # Topics must be passed via --topics; positional topics are no longer
+                    # accepted by `ros2 bag record`.
+                    '--topics',
                     '/rosout',
                     '/tf',
                     '/tf_static',
@@ -147,7 +183,10 @@ def generate_test_description():
                     '/camera_1/infra2/image_rect_raw_drop',
                     '/camera_1/infra1/camera_info_drop',
                     '/camera_1/infra2/camera_info_drop',
-                ],
+                ] + ([
+                    '/camera_1/aligned_depth_to_color/image_raw',
+                    '/camera_1/aligned_depth_to_color/camera_info',
+                ] if use_native_depth else []),
                 output='both',
                 on_exit=Shutdown(),
             )
@@ -159,7 +198,11 @@ def generate_test_description():
             executable='static_transform_publisher',
             name='static_transform_publisher',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_link']
+            arguments=[
+                '--x', '0', '--y', '0', '--z', '0',
+                '--yaw', '0', '--pitch', '0', '--roll', '0',
+                '--frame-id', 'world', '--child-frame-id', 'base_link',
+            ]
         ))
 
     return RosBagRecorderWaitNSecondsTest.generate_test_description(

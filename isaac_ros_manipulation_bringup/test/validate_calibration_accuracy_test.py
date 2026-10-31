@@ -166,14 +166,15 @@ class CharucoBoardDetector(TargetDetector):
         longer_side_m = target_description['longer_side_m']
         self.checkerboard_dimensions = (num_squares_width - 1, num_squares_height - 1)
         self.corners_3d = self._compute_checkerboard_3d_points(
-            num_squares_height, num_squares_width, longer_side_m)
+            num_squares_height, num_squares_width, longer_side_m,
+            target_description['marker_size_m'])
 
     def _compute_checkerboard_3d_points(self, num_squares_height, num_squares_width,
-                                        longer_side_m) -> np.ndarray:
+                                        longer_side_m, marker_size_m) -> np.ndarray:
         """Compute points in the format [[0,0,0],[1,0,0],[2,0,0],...,[M,N,0]] * square_size."""
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_50)
-        checkerboard_square_size_m = 20 / 1000  # mm -> m
-        marker_size_m = 15 / 1000  # original size in mm -> m
+        # longer_side_m spans the longest side of the pattern, e.g. 0.28 m / 14 squares = 20 mm.
+        checkerboard_square_size_m = longer_side_m / max(num_squares_width, num_squares_height)
         all_obj_pts = cv2.aruco.CharucoBoard_create(
             squaresX=num_squares_width, squaresY=num_squares_height,
             squareLength=checkerboard_square_size_m,
@@ -440,7 +441,8 @@ class ValidateCalibrationAccuracyTest(unittest.TestCase):
         if len(cls.rosbag_folders) == 0:
             raise ValueError('No rosbag folders found in the rosbag folder')
 
-        cls.rosbag_folder_path = f'{cls.rosbag_folder_path}/{cls.rosbag_folders[0]}'
+        # Bag folders are timestamped (YYYY-mm-dd_HH-MM-SS), so the last sorted one is newest.
+        cls.rosbag_folder_path = f'{cls.rosbag_folder_path}/{sorted(cls.rosbag_folders)[-1]}'
 
         cls.tf_transforms = {}
         cls.static_tf_transforms = {}
@@ -461,10 +463,10 @@ class ValidateCalibrationAccuracyTest(unittest.TestCase):
 
         target_description = {
             'target_type': 'charuco',
-            'num_squares_height': 9,
-            'num_squares_width': 14,
-            'longer_side_m': 0.28,
-            'marker_size_m': 0.015,
+            'num_squares_height': int(NUM_SQUARE_HEIGHT),
+            'num_squares_width': int(NUM_SQUARE_WIDTH),
+            'longer_side_m': float(LONGER_SIDE_M),
+            'marker_size_m': float(MARKER_SIZE_M),
             'num_still_frames': 1,
             'still_image_pixel_threshold': 5,
         }
@@ -529,8 +531,6 @@ class ValidateCalibrationAccuracyTest(unittest.TestCase):
         world_T_camera_1_link = world_T_childs['camera_1_link']
         camera_1_link_T_world = np.linalg.inv(world_T_camera_1_link)
         for child_frame in all_children:
-            if child_frame.startswith('gear'):
-                continue
             if child_frame == parent_frame:
                 continue
             world_T_child = world_T_childs[child_frame]

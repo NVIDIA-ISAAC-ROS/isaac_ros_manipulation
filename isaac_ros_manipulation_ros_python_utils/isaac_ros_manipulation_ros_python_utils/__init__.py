@@ -27,5 +27,5 @@ from isaac_ros_manipulation_ros_python_utils.workflows import *
 from isaac_ros_manipulation_ros_python_utils.geometry import *
 from isaac_ros_manipulation_ros_python_utils.ood_detector import *
 from isaac_ros_manipulation_ros_python_utils.planning_utils import *
-from isaac_ros_manipulation_ros_python_utils.gear_assembly import *
+from isaac_ros_manipulation_ros_python_utils.insertion_types import *
 from isaac_ros_manipulation_ros_python_utils.grasp_reader import *

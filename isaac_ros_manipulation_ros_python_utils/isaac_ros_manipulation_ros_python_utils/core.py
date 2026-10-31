@@ -15,6 +15,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
 import os
 from typing import List, Union
 
@@ -31,8 +32,8 @@ from isaac_ros_manipulation_ros_python_utils.perception import (
     get_object_selection_server
 )
 import isaac_ros_manipulation_ros_python_utils.workflows as workflow_utils_ext
-from isaac_ros_manipulation_ros_python_utils.gear_assembly import (
-    get_gear_assembly_nodes, get_gear_assembly_orchestrator
+from isaac_ros_manipulation_ros_python_utils.displayport_insertion import (
+    get_displayport_insertion_nodes, get_displayport_insertion_orchestrator
 )
 
 from launch.actions import (
@@ -118,6 +119,26 @@ def get_pose_estimation_nodes(core_config: CoreConfig) -> List[Node] | None:
     return []
 
 
+def _get_internal_workflows(workflow_type: WorkflowType):
+    """
+    Import the launch helpers for workflows kept for internal use only.
+
+    Raises
+    ------
+        NotImplementedError: If the workflow is not part of this release
+
+    """
+    module_name = 'isaac_ros_manipulation_ros_python_utils.internal_workflows'
+    try:
+        return importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name != module_name:
+            raise
+        raise NotImplementedError(
+            f'Workflow type {workflow_type.value} is not part of this release; use '
+            f'{WorkflowType.DISPLAYPORT_CABLE_INSERTION.value}') from exc
+
+
 def get_workflow_nodes(core_config: CoreConfig) -> List[Node]:
     """
     Get workflow nodes for supported modes.
@@ -133,21 +154,26 @@ def get_workflow_nodes(core_config: CoreConfig) -> List[Node]:
     """
     workflow_nodes = []
     if core_config.workflow_config.workflow_type == WorkflowType.POSE_TO_POSE:
-        workflow_nodes = workflow_utils_ext.get_pose_to_pose(
+        workflow_nodes = _get_internal_workflows(WorkflowType.POSE_TO_POSE).get_pose_to_pose(
             workflow_config=core_config.workflow_config)
     elif core_config.workflow_config.workflow_type in (
-        WorkflowType.PICK_AND_PLACE, WorkflowType.GEAR_ASSEMBLY
+        WorkflowType.PICK_AND_PLACE,
+        WorkflowType.DISPLAYPORT_CABLE_INSERTION,
     ):
         if core_config.workflow_config.workflow_type == WorkflowType.PICK_AND_PLACE:
-            workflow_nodes = workflow_utils_ext.get_multi_object_pick_and_place(
+            workflow_nodes = _get_internal_workflows(
+                WorkflowType.PICK_AND_PLACE).get_multi_object_pick_and_place(
                 orchestration_config=core_config.workflow_config.orchestration_config)
-        elif core_config.workflow_config.workflow_type == WorkflowType.GEAR_ASSEMBLY:
+        elif core_config.workflow_config.workflow_type == \
+                WorkflowType.DISPLAYPORT_CABLE_INSERTION:
             workflow_nodes = workflow_utils_ext.get_pick_and_place_orchestrator(
                 core_config.workflow_config)
-            workflow_nodes += get_gear_assembly_nodes(core_config.workflow_config,
-                                                      use_sim_time=core_config.use_sim_time)
-            workflow_nodes += get_gear_assembly_orchestrator(core_config.workflow_config)
-        if not core_config.workflow_config.use_ground_truth_pose_in_sim:
+            workflow_nodes += get_displayport_insertion_nodes(
+                core_config.workflow_config, use_sim_time=core_config.use_sim_time)
+            workflow_nodes += get_displayport_insertion_orchestrator(
+                core_config.workflow_config)
+        if not core_config.workflow_config.use_ground_truth_pose_in_sim and not getattr(
+                core_config.workflow_config, 'use_manual_poses', False):
             workflow_nodes += get_object_detection_servers(
                 camera_config=core_config.camera_config,
                 pose_estimation_config=core_config.pose_estimation_config
@@ -165,7 +191,8 @@ def get_workflow_nodes(core_config: CoreConfig) -> List[Node]:
                     PoseEstimationType.DOPE:
                 raise NotImplementedError("Dope is not supported for pick and place")
     elif core_config.workflow_config.workflow_type == WorkflowType.OBJECT_FOLLOWING:
-        workflow_nodes = workflow_utils_ext.get_object_following(
+        workflow_nodes = _get_internal_workflows(
+            WorkflowType.OBJECT_FOLLOWING).get_object_following(
             workflow_config=core_config.workflow_config)
         workflow_nodes += get_pose_estimation_nodes(core_config)
     else:
@@ -289,12 +316,17 @@ def get_cumotion_node(
     )
     use_sim_time_str = 'true' if use_sim_time else 'false'
     tool_frame = getattr(core_config.workflow_config, 'gripper_frame', 'gripper_frame')
-    enable_object_attachment = 'true' if \
-        workflow_type in (WorkflowType.PICK_AND_PLACE, WorkflowType.GEAR_ASSEMBLY) else 'false'
+    enable_object_attachment = 'true' if workflow_type in (
+        WorkflowType.PICK_AND_PLACE,
+        WorkflowType.DISPLAYPORT_CABLE_INSERTION,
+    ) else 'false'
     enable_dnn_depth_in_realsense = 'true' if \
         core_config.depth_estimation_config.enable_dnn_depth_in_realsense else 'false'
 
-    if workflow_type in (WorkflowType.PICK_AND_PLACE, WorkflowType.GEAR_ASSEMBLY):
+    if workflow_type in (
+        WorkflowType.PICK_AND_PLACE,
+        WorkflowType.DISPLAYPORT_CABLE_INSERTION,
+    ):
         object_attachment_type = core_config.workflow_config.object_attachment_type.value
     else:
         object_attachment_type = ''

@@ -206,7 +206,7 @@ class InteractiveMarker(py_trees.behaviour.Behaviour):
                 self._last_warning_time = self.node.get_clock().now()
 
                 # Log initial warning about drop pose assignment
-                self.node.get_logger().warn(
+                self.node.get_logger().warning(
                     f'[{self.name}] ATTENTION: Drop pose initialized to current '
                     f'{self._end_effector_frame} position: x={pose.position.x:.3f}, '
                     f'y={pose.position.y:.3f}, z={pose.position.z:.3f}. '
@@ -291,7 +291,7 @@ class InteractiveMarker(py_trees.behaviour.Behaviour):
         this method when the timeout expires without user interaction.
         """
         if not self._pose_confirmed:
-            self.node.get_logger().warn(
+            self.node.get_logger().warning(
                 f'[{self.name}] User confirmation period completed. '
                 f'Drop pose was NOT modified - using current {self._end_effector_frame} '
                 f'pose as drop location.')
@@ -317,7 +317,7 @@ class InteractiveMarker(py_trees.behaviour.Behaviour):
         if time_since_last_warning >= self._WARNING_INTERVAL_SECONDS:
             remaining_time = self._user_confirmation_timeout - elapsed_time
 
-            self.node.get_logger().warn(
+            self.node.get_logger().warning(
                 f'[{self.name}] WARNING: Drop pose is still at {self._end_effector_frame} '
                 f'pose. Adjust the interactive marker in RViz to set the desired drop location. '
                 f'Time remaining: {remaining_time:.1f} seconds.')

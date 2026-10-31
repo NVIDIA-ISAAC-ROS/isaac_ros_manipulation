@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_manipulation_flexiv_driver_utils</name>
-  <version>4.6.0</version>
+  <version>5.0.0</version>
   <description>Driver utilities for Flexiv Rizon with Grav gripper in Isaac Manipulator</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
@@ -31,13 +31,21 @@
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>isaac_ros_manipulation_flexiv_isaac_sim_utils</depend>
   <depend>isaac_ros_manipulation_robot_utils</depend>
   <depend>isaac_ros_manipulation_ros_python_utils</depend>
 
   <exec_depend>isaac_ros_manipulation_flexiv_robot_description</exec_depend>
   <exec_depend>isaac_ros_cumotion_moveit</exec_depend>
+  <!-- Resolved at runtime by name via get_package_share_directory /
+       FindPackageShare in robot_description.py and flexiv_driver_utils.py, so
+       these are runtime-only and were satisfied implicitly by source builds. -->
+  <exec_depend>flexiv_description</exec_depend>
+  <exec_depend>flexiv_gripper</exec_depend>
+  <exec_depend>flexiv_moveit_config</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
+  <test_depend>flexiv_bringup</test_depend>
   <test_depend>launch_testing</test_depend>
   <test_depend>launch_ros</test_depend>
   <test_depend>tf2_ros</test_depend>

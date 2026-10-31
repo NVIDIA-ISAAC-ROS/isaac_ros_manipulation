@@ -61,7 +61,11 @@ def generate_test_description():
             executable='static_transform_publisher',
             name='static_transform_publisher',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_link']
+            arguments=[
+                '--x', '0', '--y', '0', '--z', '0',
+                '--yaw', '0', '--pitch', '0', '--roll', '0',
+                '--frame-id', 'world', '--child-frame-id', 'base_link',
+            ]
         ))
     return FoundationPoseObjectFollowingGraphTest.generate_test_description(
         run_test=RUN_TEST,
@@ -133,18 +137,13 @@ class FoundationPoseObjectFollowingGraphTest(FoundationPoseTopicConnectionsGraph
         # Add connections for foundationpose_node
         expected_graph['/foundationpose_node']['publishes'].extend([
             {'topic': '/pose_estimation/output', 'to': []},
-            {'topic': '/pose_estimation/output/nitros', 'to': []},
             {'topic': '/pose_estimation/pose_matrix_output', 'to': []},
-            {'topic': '/pose_estimation/pose_matrix_output/nitros', 'to': []}
         ])
         expected_graph['/foundationpose_node']['subscribes'].extend([
             {'topic': '/rtdetr/camera_info_dropped', 'from': ['/rtdetr_drop_node']},
             {'topic': '/rtdetr/depth_dropped', 'from': ['/rtdetr_drop_node']},
-            {'topic': '/rtdetr/depth_dropped/nitros', 'from': ['/rtdetr_drop_node']},
             {'topic': '/rtdetr/image_dropped', 'from': ['/rtdetr_drop_node']},
-            {'topic': '/rtdetr/image_dropped/nitros', 'from': ['/rtdetr_drop_node']},
             {'topic': '/segmentation', 'from': ['/resize_mask_node']},
-            {'topic': '/segmentation/nitros', 'from': ['/resize_mask_node']}
         ])
 
         # Add connections for manipulator_container
@@ -156,13 +155,10 @@ class FoundationPoseObjectFollowingGraphTest(FoundationPoseTopicConnectionsGraph
         # Add connections for resize_mask_node
         expected_graph['/resize_mask_node']['publishes'].extend([
             {'topic': '/segmentation', 'to': ['/foundationpose_node']},
-            {'topic': '/segmentation/nitros', 'to': ['/foundationpose_node']}
         ])
         expected_graph['/resize_mask_node']['subscribes'].extend([
             {'topic': '/resize/camera_info', 'from': ['/rtdetr_resize_node']},
-            {'topic': '/resize/camera_info/nitros', 'from': ['/rtdetr_resize_node']},
             {'topic': '/rt_detr_segmentation', 'from': ['/detection2_d_to_mask']},
-            {'topic': '/rt_detr_segmentation/nitros', 'from': []}
         ])
 
         # Add connections for rtdetr_decoder
@@ -177,99 +173,77 @@ class FoundationPoseObjectFollowingGraphTest(FoundationPoseTopicConnectionsGraph
 
         expected_graph['/rtdetr_decoder']['subscribes'].extend([
             {'topic': '/tensor_sub', 'from': ['/rtdetr_tensor_rt']},
-            {'topic': '/tensor_sub/nitros', 'from': ['/rtdetr_tensor_rt']}
         ])
 
         # Add connections for rtdetr_drop_node
         expected_graph['/rtdetr_drop_node']['publishes'].extend([
             {'topic': '/rtdetr/camera_info_dropped', 'to': ['/rtdetr_resize_node']},
             {'topic': '/rtdetr/depth_dropped', 'to': ['/foundationpose_node']},
-            {'topic': '/rtdetr/depth_dropped/nitros', 'to': ['/foundationpose_node']},
             {'topic': '/rtdetr/image_dropped',
                 'to': ['/rtdetr_resize_node', '/foundationpose_node']},
-            {'topic': '/rtdetr/image_dropped/nitros',
-                'to': ['/rtdetr_resize_node', '/foundationpose_node']}
         ])
         expected_graph['/rtdetr_drop_node']['subscribes'].extend([
             {'topic': '/front_stereo_camera/depth/ground_truth', 'from': []},
-            {'topic': '/front_stereo_camera/depth/ground_truth/nitros', 'from': []},
             {'topic': '/front_stereo_camera/left/camera_info', 'from': []},
             {'topic': '/front_stereo_camera/left/image_raw', 'from': []},
-            {'topic': '/front_stereo_camera/left/image_raw/nitros', 'from': []}
         ])
 
         # Add connections for rtdetr_image_to_tensor_node
         expected_graph['/rtdetr_image_to_tensor_node']['publishes'].extend([
             {'topic': '/normalized_tensor', 'to': ['/rtdetr_interleaved_to_planar_node']},
-            {'topic': '/normalized_tensor/nitros', 'to': ['/rtdetr_interleaved_to_planar_node']}
         ])
         expected_graph['/rtdetr_image_to_tensor_node']['subscribes'].extend([
             {'topic': '/padded_image', 'from': ['/rtdetr_pad_node']},
-            {'topic': '/padded_image/nitros', 'from': ['/rtdetr_pad_node']}
         ])
 
         # Add connections for rtdetr_interleaved_to_planar_node
         expected_graph['/rtdetr_interleaved_to_planar_node']['publishes'].extend([
             {'topic': '/planar_tensor', 'to': ['/rtdetr_reshape_node']},
-            {'topic': '/planar_tensor/nitros', 'to': ['/rtdetr_reshape_node']}
         ])
         expected_graph['/rtdetr_interleaved_to_planar_node']['subscribes'].extend([
             {'topic': '/normalized_tensor', 'from': ['/rtdetr_image_to_tensor_node']},
-            {'topic': '/normalized_tensor/nitros', 'from': ['/rtdetr_image_to_tensor_node']}
         ])
 
         # Add connections for rtdetr_pad_node
         expected_graph['/rtdetr_pad_node']['publishes'].extend([
             {'topic': '/padded_image', 'to': ['/rtdetr_image_to_tensor_node']},
-            {'topic': '/padded_image/nitros', 'to': ['/rtdetr_image_to_tensor_node']}
         ])
         expected_graph['/rtdetr_pad_node']['subscribes'].extend([
             {'topic': '/resize/image', 'from': ['/rtdetr_resize_node']},
-            {'topic': '/resize/image/nitros', 'from': ['/rtdetr_resize_node']}
         ])
 
         # Add connections for rtdetr_preprocessor
         expected_graph['/rtdetr_preprocessor']['publishes'].extend([
             {'topic': '/tensor_pub', 'to': ['/rtdetr_tensor_rt']},
-            {'topic': '/tensor_pub/nitros', 'to': ['/rtdetr_tensor_rt']}
         ])
         expected_graph['/rtdetr_preprocessor']['subscribes'].extend([
             {'topic': '/reshaped_tensor', 'from': ['/rtdetr_reshape_node']},
-            {'topic': '/reshaped_tensor/nitros', 'from': ['/rtdetr_reshape_node']}
         ])
 
         # Add connections for rtdetr_reshape_node
         expected_graph['/rtdetr_reshape_node']['publishes'].extend([
             {'topic': '/reshaped_tensor', 'to': ['/rtdetr_preprocessor']},
-            {'topic': '/reshaped_tensor/nitros', 'to': ['/rtdetr_preprocessor']}
         ])
         expected_graph['/rtdetr_reshape_node']['subscribes'].extend([
             {'topic': '/planar_tensor', 'from': ['/rtdetr_interleaved_to_planar_node']},
-            {'topic': '/planar_tensor/nitros', 'from': ['/rtdetr_interleaved_to_planar_node']}
         ])
 
         # Add connections for rtdetr_resize_node
         expected_graph['/rtdetr_resize_node']['publishes'].extend([
             {'topic': '/resize/camera_info', 'to': ['/resize_mask_node']},
-            {'topic': '/resize/camera_info/nitros', 'to': ['/resize_mask_node']},
             {'topic': '/resize/image', 'to': ['/rtdetr_pad_node']},
-            {'topic': '/resize/image/nitros', 'to': ['/rtdetr_pad_node']}
         ])
         expected_graph['/rtdetr_resize_node']['subscribes'].extend([
             {'topic': '/rtdetr/camera_info_dropped', 'from': ['/rtdetr_drop_node']},
-            {'topic': '/rtdetr/camera_info_dropped/nitros', 'from': []},
             {'topic': '/rtdetr/image_dropped', 'from': ['/rtdetr_drop_node']},
-            {'topic': '/rtdetr/image_dropped/nitros', 'from': ['/rtdetr_drop_node']}
         ])
 
         # Add connections for rtdetr_tensor_rt
         expected_graph['/rtdetr_tensor_rt']['publishes'].extend([
             {'topic': '/tensor_sub', 'to': ['/rtdetr_decoder']},
-            {'topic': '/tensor_sub/nitros', 'to': ['/rtdetr_decoder']}
         ])
         expected_graph['/rtdetr_tensor_rt']['subscribes'].extend([
             {'topic': '/tensor_pub', 'from': ['/rtdetr_preprocessor']},
-            {'topic': '/tensor_pub/nitros', 'from': ['/rtdetr_preprocessor']}
         ])
 
         # Log the expected graph nodes

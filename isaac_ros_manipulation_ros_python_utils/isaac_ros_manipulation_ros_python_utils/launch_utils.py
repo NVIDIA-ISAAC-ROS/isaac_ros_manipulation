@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+import ast
+import math
 from typing import List, Tuple
 
 from geometry_msgs.msg import Pose, Vector3
@@ -100,6 +102,47 @@ def get_float_variable(context: LaunchContext, variable_name: str) -> float:
     return float(
         context.perform_substitution(LaunchConfiguration(variable_name))
     )
+
+
+def get_float_list_variable(context: LaunchContext, variable_name: str) -> List[float]:
+    """
+    Return a float list from a launch variable.
+
+    YAML list params are passed through launch as their Python string representation.
+    """
+    str_var = str(context.perform_substitution(LaunchConfiguration(variable_name))).strip()
+    if not str_var or str_var in ('[]', "''", 'None'):
+        return []
+
+    try:
+        parsed = ast.literal_eval(str_var)
+    except (SyntaxError, ValueError) as exc:
+        raise ValueError(
+            f'{variable_name} must be a list of floats, got {str_var!r}') from exc
+
+    if not isinstance(parsed, list):
+        raise ValueError(f'{variable_name} must be a list, got {type(parsed).__name__}')
+
+    return [float(value) for value in parsed]
+
+
+def normalize_pose_quaternion(pose_values: List[float],
+                              param_name: str = 'pose') -> List[float]:
+    """Validate and normalize a pose array ``[x, y, z, qx, qy, qz, qw]``."""
+    if len(pose_values) != 7:
+        raise ValueError(
+            f'{param_name} must contain 7 values [x, y, z, qx, qy, qz, qw], '
+            f'got {len(pose_values)}')
+
+    x, y, z, qx, qy, qz, qw = (float(value) for value in pose_values)
+    if not all(math.isfinite(value) for value in (x, y, z, qx, qy, qz, qw)):
+        raise ValueError(f'{param_name} values must be finite numbers')
+
+    quat_norm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    if quat_norm <= 1e-9:
+        raise ValueError(f'{param_name} quaternion must be non-zero')
+
+    return [x, y, z, qx / quat_norm, qy / quat_norm, qz / quat_norm, qw / quat_norm]
 
 
 def get_bool_variable(context: LaunchContext, variable_name: str) -> bool:
@@ -217,8 +260,8 @@ def get_workflow_type(workflow_type_str: str) -> WorkflowType:
         return WorkflowType.PICK_AND_PLACE
     elif workflow_type_str == WorkflowType.POSE_TO_POSE.value:
         return WorkflowType.POSE_TO_POSE
-    elif workflow_type_str == WorkflowType.GEAR_ASSEMBLY.value:
-        return WorkflowType.GEAR_ASSEMBLY
+    elif workflow_type_str == WorkflowType.DISPLAYPORT_CABLE_INSERTION.value:
+        return WorkflowType.DISPLAYPORT_CABLE_INSERTION
     else:
         raise NotImplementedError(f'Workflow type {workflow_type_str} not supported !')
 
@@ -438,7 +481,17 @@ def get_segmentation_type(segmentation_type_str: str) -> SegmentationType:
 
 
 def _flexiv_frame_prefix(context: LaunchContext) -> str:
-    robot_sn = get_str_variable(context, 'robot_sn')
+    try:
+        robot_sn = get_str_variable(context, 'robot_sn')
+    except Exception:
+        robot_sn = ''
+    if not robot_sn:
+        try:
+            robot_launch_file_path = get_str_variable(context, 'robot_launch_file_path')
+        except Exception:
+            robot_launch_file_path = ''
+        if robot_launch_file_path.endswith('flexiv_rizon_sim_driver.launch.py'):
+            return ''
     if not robot_sn:
         raise ValueError(f'Robot SN not found for Flexiv Rizon, please set the robot_sn')
     return f'{robot_sn}_'

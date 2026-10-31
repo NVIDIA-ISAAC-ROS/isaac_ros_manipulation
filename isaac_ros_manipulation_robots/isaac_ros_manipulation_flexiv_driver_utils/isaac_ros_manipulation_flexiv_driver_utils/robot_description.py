@@ -83,20 +83,34 @@ def get_robot_description_contents_for_real(
         str: URDF XML string ready to be set as ``robot_description``.
 
     """
+    # flexiv_description v3.0 renamed its xacro and dropped the ros2_control args;
+    # the ros2_control-enabled description now lives in flexiv_hardware, which
+    # forwards the description-only args through to flexiv_description.
     urdf_xacro_file = os.path.join(
-        get_package_share_directory('flexiv_description'),
-        'urdf', 'rizon.urdf.xacro',
+        get_package_share_directory('flexiv_hardware'),
+        'urdf', 'flexiv.urdf.xacro',
     )
     mappings = {
         'robot_sn': driver_config.robot_sn,
-        'rizon_type': driver_config.rizon_type,
+        # v3.0 calls this robot_type; our config keeps the rizon_type name.
+        'robot_type': driver_config.rizon_type,
+        'ros2_control': 'true',
         'rdk_control_mode': driver_config.rdk_control_mode,
+        'runtime_cartesian_switching': driver_config.runtime_cartesian_switching,
         'load_gripper': driver_config.load_gripper,
         'gripper_name': driver_config.gripper_name,
         'load_mounted_ft_sensor': driver_config.load_mounted_ft_sensor,
         'use_fake_hardware': driver_config.use_fake_hardware,
         'fake_sensor_commands': driver_config.fake_sensor_commands,
     }
+
+    # Give the driver the same calibration cuMotion gets. Omitted rather than
+    # passed empty: the xacro would try to load '' as a YAML. Absent file leaves
+    # flexiv_description on its shipped default_kinematics.yaml.
+    calibrated = getattr(driver_config, 'calibrated_kinematics_path', '')
+    if calibrated and os.path.isfile(calibrated):
+        mappings['kinematics_parameters_file'] = calibrated
+
     return xacro.process_file(urdf_xacro_file, mappings=mappings).toxml()
 
 
@@ -127,6 +141,9 @@ def get_srdf_contents_for_real(
     )
     mappings = {
         'robot_sn': driver_config.robot_sn,
+        # Upstream defaults this to Rizon4; without it the SRDF describes the
+        # wrong arm variant.
+        'robot_type': driver_config.rizon_type,
         'load_gripper': driver_config.load_gripper,
         'load_mounted_ft_sensor': driver_config.load_mounted_ft_sensor,
     }

@@ -49,9 +49,5 @@ setup(
             'pytest'
         ]
     },
-    scripts=[
-        'src/isaac_sim_joint_parser_node.py',
-        'src/isaac_sim_grav_gripper_driver.py',
-    ],
     entry_points={},
 )

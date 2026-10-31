@@ -15,24 +15,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-from typing import List, Union
-
-from ament_index_python.packages import get_package_share_directory
+from typing import List
 
 from isaac_ros_manipulation_ros_python_utils.config import (
-    GearAssemblyConfig, ObjectFollowingConfig, OrchestrationConfig,
-    PoseToPoseConfig, WorkflowType
+    DisplayPortInsertionConfig, WorkflowType
 )
 
-from launch.actions import (
-    ExecuteProcess, IncludeLaunchDescription, Shutdown
-)
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import Shutdown
 from launch_ros.actions import Node
 
 
-def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List[Node]:
+def get_pick_and_place_orchestrator(
+    workflow_config: DisplayPortInsertionConfig
+) -> List[Node]:
     """
     Get the pick and place orchestrator.
 
@@ -45,19 +40,23 @@ def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List
         List[Node] : ROS node for Pick and place
 
     """
-    if (
-        workflow_config.use_ground_truth_pose_in_sim and
-        workflow_config.workflow_type != WorkflowType.GEAR_ASSEMBLY
-    ):
+    if workflow_config.workflow_type == WorkflowType.DISPLAYPORT_CABLE_INSERTION:
+        object_frame_name = 'displayport_cable_frame'
+    elif workflow_config.use_ground_truth_pose_in_sim:
         object_frame_name = workflow_config.sim_gt_asset_frame_id
     else:
         object_frame_name = 'detected_object1'
-    joint_states_topic = '/joint_states'
     # Robot- and gripper-specific values live on ``driver_config``; workflow-level
     # knobs (retries, scales, attachments, etc.) stay on ``workflow_config``.
     driver_config = workflow_config.driver_config
+    grasp_approach_offset = [0.0, 0.0, -0.15]
+    pick_retract_offset = getattr(workflow_config, 'pick_retract_offset_distance', [])
+    if pick_retract_offset:
+        retract_offset = pick_retract_offset
+    else:
+        retract_offset = [0.0, 0.0, 0.15]
     pick_and_place_orchestrator_node = Node(
-        package='isaac_ros_manipulation_gear_assembly',
+        package='isaac_ros_manipulation_contact_rich_insertion',
         executable='pick_and_place_orchestrator.py',
         name='pick_and_place_orchestrator',
         parameters=[{
@@ -65,12 +64,25 @@ def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List
             'isaac_sim': workflow_config.use_sim_time,
             'use_sim_time': workflow_config.use_sim_time,
             'time_dilation_factor': float(workflow_config.time_dilation_factor),
-            'retract_offset_distance': [0.0, 0.0, 0.15],
+            'retract_offset_distance': retract_offset,
+            'grasp_approach_offset_distance': grasp_approach_offset,
             'object_frame_name': object_frame_name,
             'use_ground_truth_pose_from_sim': workflow_config.use_ground_truth_pose_in_sim,
             'sleep_time_before_planner_tries_sec': workflow_config.pick_and_place_retry_wait_time,
             'num_planner_tries': workflow_config.pick_and_place_planner_retries,
             'publish_grasp_frame': True,
+            'use_cartesian_pickup_retract':
+                getattr(workflow_config, 'use_cartesian_pickup_retract', False),
+            # Vendor drivers name the arm planning group differently; Flexiv v3.0
+            # uses '<robot_sn>_arm'. Fall back to the driver's derived name before
+            # the historical UR-era default.
+            'cartesian_retract_group_name':
+                getattr(workflow_config, 'cartesian_retract_group_name', None)
+                or getattr(driver_config, 'planning_group_name', 'rizon_arm'),
+            'disable_pick_planning_scene':
+                getattr(workflow_config, 'disable_pick_planning_scene', False),
+            'disable_place_planning_scene':
+                getattr(workflow_config, 'disable_place_planning_scene', False),
             'gripper_collision_links': driver_config.gripper_collision_links,
             'attach_object_shape': workflow_config.object_attachment_type.value,
             'attach_object_scale': workflow_config.object_attachment_scale,
@@ -79,11 +91,12 @@ def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List
             'retract_in_world_frame': True,
             'use_pose_from_rviz': workflow_config.use_pose_from_rviz,
             'end_effector_mesh_resource_uri': workflow_config.end_effector_mesh_resource_uri,
-            'joint_states_topic': joint_states_topic,
             'move_to_home_pose_after_place': workflow_config.move_to_home_pose_after_place,
             'home_pose': workflow_config.home_pose,
             'seed_state_for_ik_solver_for_joint_space_planner':
                 workflow_config.seed_state_for_ik_solver_for_joint_space_planner,
+            'use_exact_target_joint_state_for_place_pose':
+                getattr(workflow_config, 'use_exact_joint_state_place_pose', False),
             'base_frame': driver_config.base_frame,
             'gripper_frame': driver_config.gripper_frame,
             'grasp_frame': driver_config.grasp_frame,
@@ -91,6 +104,7 @@ def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List
             'gripper_open_position': driver_config.gripper_open_position,
             'gripper_close_position': driver_config.gripper_close_position,
             'gripper_settle_time_sec': driver_config.gripper_settle_time_sec,
+            'gripper_max_effort': driver_config.gripper_max_effort,
             'joint_names': driver_config.joint_names,
             'joint_limits_file_path': driver_config.joint_limits_file_path,
         }],
@@ -98,111 +112,3 @@ def get_pick_and_place_orchestrator(workflow_config: GearAssemblyConfig) -> List
         on_exit=Shutdown(),
     )
     return [pick_and_place_orchestrator_node]
-
-
-def get_pose_to_pose(workflow_config: PoseToPoseConfig) -> List[Node]:
-    """
-    Get pose to pose nodes.
-
-    Launches the pose-to-pose workflow from isaac_ros_manipulation_pose_to_pose
-    via isaac_ros_manipulation_bringup (pose_to_pose.launch.py).
-
-    Args
-    ----
-        workflow_config (PoseToPoseConfig): Configuration for pose to pose workflow
-
-    Returns
-    -------
-        List[Node]: List of nodes
-
-    """
-    launch_files_include_dir = os.path.join(
-        get_package_share_directory('isaac_ros_manipulation_bringup'), 'launch', 'include'
-    )
-    pose_to_pose_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [launch_files_include_dir, '/pose_to_pose.launch.py']
-        ),
-        launch_arguments={
-            'time_dilation_factor': str(workflow_config.time_dilation_factor),
-        }.items(),
-    )
-    return [pose_to_pose_launch]
-
-
-def get_object_following(workflow_config: ObjectFollowingConfig) -> List[Node]:
-    """
-    Get the node helpful for triggering planning for object following.
-
-    Launches the object-following workflow from
-    isaac_ros_manipulation_object_following via isaac_ros_manipulation_bringup
-    (object_following.launch.py). Adds offset over detected pose so that the robot gripper
-    does not collide with it when following the object.
-
-    Args
-    ----
-        workflow_config (ObjectFollowingConfig): Configuration for object following workflow
-
-    Returns
-    -------
-        List[Node]: List of nodes for object following
-
-    """
-    launch_files_include_dir = os.path.join(
-        get_package_share_directory('isaac_ros_manipulation_bringup'), 'launch', 'include'
-    )
-
-    target_tool_frame = workflow_config.target_tool_frame
-    return [
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            arguments=['0.043', '0.359', '0.065', '0.553',
-                       '0.475', '-0.454', '0.513', 'detected_object1',
-                       target_tool_frame],
-            on_exit=Shutdown(),
-        ), IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [launch_files_include_dir, '/object_following.launch.py']
-            ),
-            launch_arguments={
-                'target_tool_frame': target_tool_frame,
-                'time_dilation_factor': str(workflow_config.time_dilation_factor),
-            }.items()
-        )
-    ]
-
-
-def get_multi_object_pick_and_place(
-        orchestration_config: OrchestrationConfig) -> List[Union[ExecuteProcess]]:
-    """
-    Get the multi-object pick and place behavior tree process.
-
-    Parameters
-    ----------
-    orchestration_config : OrchestrationConfig
-        Configuration for the orchestration behavior tree including
-        behavior tree config file, blackboard config, and logging settings
-
-    Returns
-    -------
-    List[Union[ExecuteProcess]]
-        ROS process for multi-object pick and place behavior tree
-
-    """
-    multi_object_pick_and_place_process = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [get_package_share_directory('isaac_ros_manipulation_pick_and_place'),
-             '/launch/orchestration.launch.py']),
-        launch_arguments={
-            'behavior_tree_config_file': orchestration_config.behavior_tree_config_file,
-            'blackboard_config_file': orchestration_config.blackboard_config_file,
-            'print_ascii_tree': orchestration_config.print_ascii_tree,
-            'manual_mode': orchestration_config.manual_mode,
-            'log_level': orchestration_config.log_level,
-            'headless': str(orchestration_config.headless),
-            # From bringup `robot_sn` / `tf_prefix`; empty when unused.
-            'frame_prefix': orchestration_config.frame_prefix,
-        }.items(),
-    )
-    return [multi_object_pick_and_place_process]

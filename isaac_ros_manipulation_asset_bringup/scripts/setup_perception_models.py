@@ -47,7 +47,7 @@ class ModelType(Enum):
     DOPE = 'dope'
     SEGMENT_ANYTHING = 'segment_anything'
     SEGMENT_ANYTHING2 = 'segment_anything2'
-    GEAR_ASSEMBLY = 'gear_assembly'
+    MANIPULATION = 'manipulation'
     ALL = 'all'
 
 
@@ -63,7 +63,7 @@ class ModelSetup:
         dope_assets: Optional[Path] = None,
         segment_anything_assets: Optional[Path] = None,
         segment_anything2_assets: Optional[Path] = None,
-        dnn_policy_assets: Optional[Path] = None,
+        manipulation_assets: Optional[Path] = None,
         sam_model_assets: Optional[Path] = None,
         sam2_model_assets: Optional[Path] = None
     ):
@@ -86,8 +86,8 @@ class ModelSetup:
                 Path to cached Segment Anything assets
             segment_anything2_assets
                 Path to cached Segment Anything 2 assets
-            dnn_policy_assets
-                Path to cached DNN Policy assets
+            manipulation_assets
+                Path to cached Manipulation assets
             sam_model_assets
                 Path to cached SAM model assets
             sam2_model_assets
@@ -126,7 +126,7 @@ class ModelSetup:
         self.dope_assets = dope_assets
         self.segment_anything_assets = segment_anything_assets
         self.segment_anything2_assets = segment_anything2_assets
-        self.dnn_policy_assets = dnn_policy_assets
+        self.manipulation_assets = manipulation_assets
         self.sam_model_assets = sam_model_assets
         self.sam2_model_assets = sam2_model_assets
 
@@ -519,21 +519,6 @@ class ModelSetup:
                     self.logger.error(f'Failed to install sam2 package: {e}')
                     return False
 
-            # Install onnxconverter-common for fp16 conversion
-            try:
-                import onnxconverter_common  # noqa: F401
-            except ImportError:
-                self.logger.info('Installing onnxconverter-common for fp16 conversion...')
-                install_cmd = [
-                    sys.executable, '-m', 'pip', 'install', '--break-system-packages',
-                    'onnxconverter-common==1.14.0'
-                ]
-                try:
-                    subprocess.check_call(install_cmd)
-                except subprocess.CalledProcessError as e:
-                    self.logger.warning(f'Failed to install onnxconverter-common: {e}')
-                    # Continue anyway, fp32 conversion will still work
-
             self.logger.info('Converting PyTorch model to ONNX format (fp16)...')
             cmd = [
                 'ros2', 'run', 'isaac_ros_segment_anything2', 'sam2_onnx_exporter.py',
@@ -623,9 +608,9 @@ class ModelSetup:
 
         return True
 
-    def setup_gear_assembly(self) -> bool:
+    def setup_manipulation(self) -> bool:
         """
-        Set up the DNN Policy assets.
+        Set up the Manipulation assets for contact-rich insertion tutorials.
 
         Returns
         -------
@@ -633,24 +618,24 @@ class ModelSetup:
             True if setup was successful, False otherwise
 
         """
-        self.logger.info('=== Setting up DNN Policy assets ===')
+        self.logger.info('=== Setting up Manipulation assets ===')
 
-        # Check if DNN Policy assets already exist
-        dnn_policy_dir = self.assets_dir / 'isaac_ros_manipulation_dnn_policy'
+        # Check if Manipulation assets already exist
+        manipulation_dir = self.assets_dir / 'isaac_ros_manipulation'
 
-        if not dnn_policy_dir.exists() or self.force:
+        if not manipulation_dir.exists() or self.force:
             # remove the directory if it exists, in case of force download
-            shutil.rmtree(dnn_policy_dir, ignore_errors=True)
+            shutil.rmtree(manipulation_dir, ignore_errors=True)
             url = 'https://api.ngc.nvidia.com/v2/resources/org/nvidia/team/' \
-                  'isaac/isaac_ros_manipulation_dnn_policy/4.5.0/' \
+                  'isaac/isaac_ros_manipulation_assets/5.0.4/' \
                   'files?redirect=true&path=quickstart.tar.gz'
             if not self.process_urls(
                 self.assets_dir, [url], 'quickstart.tar.gz',
-                cache_path=self.dnn_policy_assets
+                cache_path=self.manipulation_assets
             ):
                 return False
         else:
-            self.logger.info(f'DNN Policy assets already exist at {dnn_policy_dir} - '
+            self.logger.info(f'Manipulation assets already exist at {manipulation_dir} - '
                              'Skipping download')
 
         return True
@@ -708,8 +693,8 @@ class ModelSetup:
                 result = self.setup_segment_anything()
             elif model_type == ModelType.SEGMENT_ANYTHING2:
                 result = self.setup_segment_anything2()
-            elif model_type == ModelType.GEAR_ASSEMBLY:
-                result = self.setup_gear_assembly()
+            elif model_type == ModelType.MANIPULATION:
+                result = self.setup_manipulation()
             else:
                 self.logger.error(f'Unknown model type: {model_type}')
                 result = False
@@ -807,10 +792,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        '--dnn-policy-assets',
+        '--manipulation-assets',
         type=str,
         default=None,
-        help='Path to the DNN Policy assets'
+        help='Path to the Manipulation assets'
     )
 
     parser.add_argument(
@@ -845,7 +830,7 @@ def main() -> int:
         dope_assets=args.dope_assets,
         segment_anything_assets=args.segment_anything_assets,
         segment_anything2_assets=args.segment_anything2_assets,
-        dnn_policy_assets=args.dnn_policy_assets,
+        manipulation_assets=args.manipulation_assets,
         sam_model_assets=args.sam_model_assets,
         sam2_model_assets=args.sam2_model_assets,
     )

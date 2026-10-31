@@ -15,7 +15,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from control_msgs.action import GripperCommand
+from control_msgs.action import ParallelGripperCommand
 from isaac_ros_manipulation_orchestration.behaviors.base_action import BaseActionBehavior
 from isaac_ros_manipulation_orchestration.utils.status_types import BehaviorStatus
 import py_trees
@@ -48,7 +48,7 @@ class OpenGripper(BaseActionBehavior):
                  max_effort: float):
         super().__init__(
             name=name,
-            action_type=GripperCommand,
+            action_type=ParallelGripperCommand,
             action_server_name=gripper_action_name
         )
 
@@ -94,10 +94,9 @@ class OpenGripper(BaseActionBehavior):
 
     def _trigger_open_gripper(self):
         """Trigger the action call for opening the gripper."""
-        gripper_goal = GripperCommand.Goal()
-
-        gripper_goal.command.position = float(self.open_position)
-        gripper_goal.command.max_effort = float(self.max_effort)
+        gripper_goal = ParallelGripperCommand.Goal()
+        gripper_goal.command.position = [float(self.open_position)]
+        gripper_goal.command.effort = [float(self.max_effort)]
 
         self.node.get_logger().info(f'Opening gripper to position {self.open_position}')
         self.send_goal(gripper_goal)
@@ -114,12 +113,14 @@ class OpenGripper(BaseActionBehavior):
 
         """
         # Check if we reached the goal position
-        reached_goal = getattr(self.get_action_result(), 'reached_goal', None)
+        result = self.get_action_result()
+        reached_goal = getattr(result, 'reached_goal', None)
+        position = result.state.position[0] if result.state.position else None
 
         if reached_goal:
             self.node.get_logger().info(
                 f'[{self.name}] Successfully opened gripper to position: '
-                f'{self.get_action_result().position}')
+                f'{position}')
             return py_trees.common.Status.SUCCESS
         else:
             self.node.get_logger().error(

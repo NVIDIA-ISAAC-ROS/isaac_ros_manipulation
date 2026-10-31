@@ -82,13 +82,12 @@ def launch_setup(context, *args, **kwargs):
         dropped_depth_topic_name = '/grounding_dino/depth_dropped'
         drop_node = ComposableNode(
             name='grounding_dino_drop_node',
-            package='isaac_ros_nitros_topic_tools',
-            plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
+            package='isaac_ros_topic_tools',
+            plugin='nvidia::isaac_ros::topic_tools::CameraDropNode',
             parameters=[{
                 'X': dropped_fps,
                 'Y': input_fps,
                 'mode': 'mono+depth',
-                'depth_format_string': 'nitros_image_mono16',
                 'input_qos': input_qos,
                 'output_qos': output_qos,
                 'input_queue_size': 1,
@@ -264,10 +263,8 @@ def launch_setup(context, *args, **kwargs):
                 'inputs', 'input_ids', 'attention_mask', 'position_ids',
                 'token_type_ids', 'text_token_mask'
             ],
-            'input_tensor_formats': ['nitros_tensor_list_nchw_rgb_f32'],
             'output_tensor_names': ['scores', 'boxes'],
             'output_binding_names': ['pred_logits', 'pred_boxes'],
-            'output_tensor_formats': ['nitros_tensor_list_nhwc_rgb_f32'],
             'verbose': False,
             'force_engine_update': False,
             'input_qos': output_qos,

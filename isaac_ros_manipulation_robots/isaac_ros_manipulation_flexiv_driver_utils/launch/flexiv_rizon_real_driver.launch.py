@@ -101,6 +101,15 @@ def generate_launch_description():
             choices=['joint_position', 'joint_impedance'],
         ),
         DeclareLaunchArgument(
+            'runtime_cartesian_switching',
+            default_value='false',
+            description='Prepare Cartesian mode at activation so a task-space '
+                        'policy can take Cartesian command authority at runtime '
+                        'without restarting the driver. Zeroes the force/torque '
+                        'sensor at bring-up, so nothing may be in contact with '
+                        'the robot.',
+        ),
+        DeclareLaunchArgument(
             'load_gripper',
             default_value='false',
             description='Load the Flexiv Grav gripper.',

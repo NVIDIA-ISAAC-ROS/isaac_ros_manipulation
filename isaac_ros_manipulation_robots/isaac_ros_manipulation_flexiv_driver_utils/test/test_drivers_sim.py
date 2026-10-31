@@ -59,7 +59,7 @@ def generate_test_description():
             'params',
             'flexiv_rizon_grav.yaml'
         )
-        # Local seed params: sim_launch_params in bringup references that package
+        # Local seed params: the bringup simulation params reference that package
         # (not installed under minimal Jenkins/colcon selections). See params/
         # flexiv_driver_sim_test_seed_params.yaml header.
         sim_seed_params_config = os.path.join(
@@ -92,7 +92,11 @@ def generate_test_description():
                 executable='static_transform_publisher',
                 name='static_transform_publisher',
                 output='screen',
-                arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_link'],
+                arguments=[
+                    '--x', '0', '--y', '0', '--z', '0',
+                    '--yaw', '0', '--pitch', '0', '--roll', '0',
+                    '--frame-id', 'world', '--child-frame-id', 'base_link',
+                ],
             )
         )
 

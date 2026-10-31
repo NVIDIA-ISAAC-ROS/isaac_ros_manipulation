@@ -52,6 +52,13 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node, SetParameter
 
 
+def _is_manual_displayport_workflow(params):
+    return (
+        str(params.get('workflow_type', '')).upper() == 'DISPLAYPORT_CABLE_INSERTION' and
+        str(params.get('displayport_insertion_use_manual_poses', '')).lower() == 'true'
+    )
+
+
 def launch_setup(context: LaunchContext, *args, **kwargs) -> List[Node]:
     """
     Door into the core of Isaac Manipulator nodes.
@@ -73,12 +80,16 @@ def launch_setup(context: LaunchContext, *args, **kwargs) -> List[Node]:
     isaac_ros_manipulation_workflow_bringup_include_dir = os.path.join(
         get_package_share_directory('isaac_ros_manipulation_bringup'), 'launch')
 
-    # This launch file may be replaced with one for a different sensor setup,
-    # so long as it provides RGB and depth.
-    sensor_nodes = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [isaac_ros_manipulation_workflow_bringup_include_dir, '/sensors/cameras.launch.py']),
-        launch_arguments={key: str(value) for key, value in params.items()}.items())
+    sensor_nodes = []
+    if not _is_manual_displayport_workflow(params):
+        # This launch file may be replaced with one for a different sensor setup,
+        # so long as it provides RGB and depth.
+        sensor_nodes = [IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                isaac_ros_manipulation_workflow_bringup_include_dir,
+                '/sensors/cameras.launch.py',
+            ]),
+            launch_arguments={key: str(value) for key, value in params.items()}.items())]
 
     # Routes to the robot-specific driver launch file based on 'robot_launch_file_path'
     # in the workflow configuration YAML. This enables support for different robots
@@ -102,7 +113,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs) -> List[Node]:
         manipulator_init_nodes += [SetParameter(name='use_sim_time', value=True)]
 
     return (
-        manipulator_init_nodes + [sensor_nodes] + [core_nodes] + [driver_nodes]
+        manipulator_init_nodes + sensor_nodes + [core_nodes] + [driver_nodes]
     )
 
 

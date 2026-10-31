@@ -204,6 +204,7 @@ class CloseGripperConfig:
 
     gripper_action_name: str
     close_position: float
+    close_positions_by_class: Dict[str, float]
     max_effort: float
 
     @classmethod
@@ -213,6 +214,11 @@ class CloseGripperConfig:
                 'gripper_action_name', '/robotiq_gripper_controller/gripper_cmd'
             ),
             close_position=params.get('close_position', 0.55),
+            close_positions_by_class={
+                str(class_id): float(position)
+                for class_id, position in (
+                    params.get('close_positions_by_class') or {}).items()
+            },
             max_effort=params.get('max_effort', 10.0)
         )
 
@@ -316,10 +322,7 @@ class InteractiveMarkerConfig:
     @classmethod
     def from_dict(cls, params: Dict[str, Any]) -> 'InteractiveMarkerConfig':
         return cls(
-            mesh_resource_uri=params.get(
-                'mesh_resource_uri',
-                'package://isaac_ros_manipulation_ur_robot_description/meshes/robotiq_2f_85.obj'
-            ),
+            mesh_resource_uri=params.get('mesh_resource_uri', ''),
             reference_frame=params.get('reference_frame', 'base_link'),
             end_effector_frame=params.get('end_effector_frame', 'gripper_frame'),
             user_confirmation_timeout=params.get('user_confirmation_timeout', 10.0)

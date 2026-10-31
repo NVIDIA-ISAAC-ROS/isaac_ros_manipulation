@@ -84,7 +84,6 @@ def launch_setup(context, *args, **kwargs):
                 parameters=[{
                     'mode': 'mono+depth',
                     'is_sam2': True,
-                    'depth_format_string': 'nitros_image_mono16',
                     'max_rate_hz': 2.0,
                     'input_qos': input_qos,
                     'output_qos': output_qos,
@@ -262,14 +261,12 @@ def launch_setup(context, *args, **kwargs):
                 'input_binding_names': [
                     'image', 'bbox_coords', 'point_coords', 'point_labels',
                     'mask_memory', 'obj_ptr_memory', 'original_size', 'permutation'],
-                'input_tensor_formats': ['nitros_tensor_list_nchw_rgb_f32'],
                 'output_tensor_names': [
                     'high_res_masks', 'object_score_logits', 'maskmem_features',
                     'maskmem_pos_enc', 'obj_ptr_features'],
                 'output_binding_names': [
                     'high_res_masks', 'object_score_logits', 'maskmem_features',
                     'maskmem_pos_enc', 'obj_ptr_features'],
-                'output_tensor_formats': ['nitros_tensor_list_nchw_rgb_f32'],
             }],
             remappings=[
                 ('tensor_pub', 'encoded_data'),

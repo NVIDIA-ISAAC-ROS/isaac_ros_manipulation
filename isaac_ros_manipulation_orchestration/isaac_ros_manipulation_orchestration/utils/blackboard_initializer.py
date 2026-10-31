@@ -178,6 +178,15 @@ class BlackboardInitializer:
         )
         blackboard.workflow_feedback_queue = collections.deque()
 
+        # The action server sets this after preparing a goal and clears it
+        # before releasing that goal. Behavior-tree guards use it to keep
+        # goal-dependent work disabled while no goal is active.
+        blackboard.register_key(
+            key='action_goal_active',
+            access=py_trees.common.Access.WRITE,
+        )
+        blackboard.action_goal_active = False
+
         return blackboard
 
     def setup_retry_configuration(self, retry_config: RetryConfig):

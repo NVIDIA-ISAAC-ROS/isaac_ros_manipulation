@@ -46,46 +46,17 @@ if(BUILD_TESTING)
   add_launch_test(test/foundationpose_topic_connections_pick_and_place_test.py TIMEOUT 100)
 
   # These test QOS setting for the core nodes in manipulator
-  add_launch_test(test/core_nodes_qos_sim_test.py)
   add_launch_test(test/core_nodes_qos_realsense_test.py)
 
-  # These test the graph structure of core nodes in manipulator
-  add_launch_test(test/core_nodes_topic_connections_test.py TIMEOUT 300)
-
-  # Add test to check object following with pose estimation POL
-  add_launch_test(test/pose_estimation_pol_sim_test.py)
-  add_launch_test(test/object_detection_pol_sim_test.py)
-  add_launch_test(test/pose_estimation_pol_realsense_test.py)
-  add_launch_test(test/object_detection_pol_realsense_test.py)
-  add_launch_test(test/pick_and_place_servers_realsense_pol_test.py)
-  add_launch_test(test/pick_and_place_servers_sim_test.py)
-
   # Add test to check manipulator cumotion and perception
-  add_launch_test(test/manipulator_cumotion_and_perception_load_test_sim_test.py TIMEOUT 300)
-  add_launch_test(test/manipulator_cumotion_and_perception_load_test_realsense_test.py TIMEOUT 300)
   add_launch_test(test/flexiv_motion_plan_with_nvblox_test.py TIMEOUT 300)
   add_launch_test(test/flexiv_motion_plan_without_nvblox_test.py TIMEOUT 300)
 
   # Add test to check robot segmentor correctness
-  add_launch_test(test/robot_segmentor_correctness_check_sim_test.py)
-  add_launch_test(test/robot_segmentor_correctness_check_realsense_test.py)
-  add_launch_test(test/robot_segmentor_pol_realsense_test.py TIMEOUT 100)
   add_launch_test(test/robot_segmentor_pol_realsense_flexiv_test.py TIMEOUT 100)
-  add_launch_test(test/robot_segmentor_pol_realsense_2_test.py TIMEOUT 100)
 
-  # Grounding DINO test
-  add_launch_test(test/grounding_dino_detection_pol_realsense_test.py TIMEOUT 100)
-  add_launch_test(test/grounding_dino_detector_servers_realsense_test.py TIMEOUT 100)
-
-  # Segment Anything test
-  add_launch_test(test/rtdetr_foundation_pose_servers_sim_test.py TIMEOUT 100)
-  add_launch_test(test/segment_anything_foundation_pose_object_following_pol_test_sim.py TIMEOUT 100)
-  add_launch_test(test/segment_anything_foundation_pose_servers_pol_sim_test.py TIMEOUT 100)
-  add_launch_test(test/segment_anything_rtdetr_detector_servers_realsense_test.py TIMEOUT 100)
-  add_launch_test(test/segment_anything_rtdetr_detector_servers_sim_test.py TIMEOUT 100)
-
-  # Segment Anything 2 test
-  add_launch_test(test/segment_anything2_rtdetr_detector_servers_realsense_test.py TIMEOUT 100)
+  # Internal launch tests that are not part of the release
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/internal_launch_tests.cmake" OPTIONAL)
 endif()
 
 # Embed versioning information into installed files

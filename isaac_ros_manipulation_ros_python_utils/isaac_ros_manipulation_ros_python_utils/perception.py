@@ -59,7 +59,7 @@ def get_foundation_pose_nodes(camera_config: CameraConfig,
     )
 
     is_object_following = 'False' if workflow_type == WorkflowType.PICK_AND_PLACE else 'True'
-    if workflow_type == WorkflowType.GEAR_ASSEMBLY:
+    if workflow_type == WorkflowType.DISPLAYPORT_CABLE_INSERTION:
         is_object_following = 'False'
 
     # We use a qos profile of default since we use pose servers in pick and place
@@ -83,9 +83,10 @@ def get_foundation_pose_nodes(camera_config: CameraConfig,
 
     refine_iterations = '3'
     symmetry_axes = '["x_180", "y_180", "z_180"]'
-    if workflow_type == WorkflowType.GEAR_ASSEMBLY:
-        refine_iterations = '3'
-        symmetry_axes = '["y_180"]'
+    if workflow_type == WorkflowType.DISPLAYPORT_CABLE_INSERTION:
+        # The plug and socket are not rotationally symmetric. Treating 180-degree
+        # flips as equivalent can rotate the grasp's local +Z offset beside the plug.
+        symmetry_axes = '[""]'
 
     pose_estimator = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -282,8 +283,9 @@ def get_dope_nodes(camera_config: CameraConfig, dope_config: DopeConfig,
     if workflow_type == WorkflowType.PICK_AND_PLACE:
         image_input_topic = 'dope_server/image_rect'
         camera_info_input_topic = 'dope_server/camera_info'
-    elif workflow_type == WorkflowType.GEAR_ASSEMBLY:
-        raise NotImplementedError('Gear assembly is not supported yet for DOPE')
+    elif workflow_type == WorkflowType.DISPLAYPORT_CABLE_INSERTION:
+        raise NotImplementedError(
+            f'{workflow_type.value} is not supported yet for DOPE')
 
     pose_estimator = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -572,8 +574,8 @@ def create_camera_drop_node(node_name: str,
     # Create the drop node
     drop_node = ComposableNode(
         name=node_name,
-        package='isaac_ros_nitros_topic_tools',
-        plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
+        package='isaac_ros_topic_tools',
+        plugin='nvidia::isaac_ros::topic_tools::CameraDropNode',
         namespace=namespace,
         parameters=[{
             'input_qos': input_qos,

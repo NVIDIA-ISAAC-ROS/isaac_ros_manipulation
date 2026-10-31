@@ -15,7 +15,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from control_msgs.action import GripperCommand
+from typing import Dict, Optional
+
+from control_msgs.action import ParallelGripperCommand
 from isaac_ros_manipulation_orchestration.behaviors.base_action import BaseActionBehavior
 from isaac_ros_manipulation_orchestration.utils.status_types import BehaviorStatus
 import py_trees
@@ -36,6 +38,9 @@ class CloseGripper(BaseActionBehavior):
         Name of the gripper action server
     close_position : float
         Target position for gripper closure (gripper-specific units)
+    close_positions_by_class : Dict[str, float], optional
+        Per-object-class closure targets. When the active object's class ID is
+        present, its value overrides ``close_position``.
     max_effort : float
         Maximum effort/force to apply during closure (gripper-specific units)
 
@@ -45,16 +50,23 @@ class CloseGripper(BaseActionBehavior):
                  name: str,
                  gripper_action_name: str,
                  close_position: float,
-                 max_effort: float
+                 max_effort: float,
+                 close_positions_by_class: Optional[Dict[str, float]] = None
                  ):
         super().__init__(
             name=name,
-            action_type=GripperCommand,
+            action_type=ParallelGripperCommand,
             action_server_name=gripper_action_name
         )
 
         self.close_position = close_position
+        self.close_positions_by_class = close_positions_by_class or {}
         self.max_effort = max_effort
+
+        self.blackboard.register_key(
+            key='active_obj_id', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(
+            key='object_info_cache', access=py_trees.common.Access.READ)
 
     def update(self):
         """
@@ -95,13 +107,31 @@ class CloseGripper(BaseActionBehavior):
 
     def _trigger_close_gripper(self):
         """Trigger the action call for closing the gripper."""
-        gripper_goal = GripperCommand.Goal()
+        gripper_goal = ParallelGripperCommand.Goal()
+        close_position, class_id = self._get_close_position()
+        gripper_goal.command.position = [close_position]
+        gripper_goal.command.effort = [float(self.max_effort)]
 
-        gripper_goal.command.position = float(self.close_position)
-        gripper_goal.command.max_effort = float(self.max_effort)
-
-        self.node.get_logger().info(f'Closing gripper to position {self.close_position}')
+        class_suffix = f' for class {class_id}' if class_id is not None else ''
+        self.node.get_logger().info(
+            f'Closing gripper to position {close_position}{class_suffix}')
         self.send_goal(gripper_goal)
+
+    def _get_close_position(self):
+        """Resolve the closure target for the currently active object class."""
+        class_id = None
+        if (self.blackboard.exists('active_obj_id') and
+                self.blackboard.active_obj_id is not None and
+                self.blackboard.exists('object_info_cache') and
+                self.blackboard.object_info_cache is not None):
+            object_info = self.blackboard.object_info_cache.get(
+                self.blackboard.active_obj_id, {})
+            if object_info.get('class_id') is not None:
+                class_id = str(object_info['class_id'])
+
+        close_position = self.close_positions_by_class.get(
+            class_id, self.close_position)
+        return float(close_position), class_id
 
     def _process_result(self):
         """
@@ -124,7 +154,7 @@ class CloseGripper(BaseActionBehavior):
         result = self.get_action_result()
         reached_goal = getattr(result, 'reached_goal', None)
         stalled = getattr(result, 'stalled', None)
-        position = getattr(result, 'position', None)
+        position = result.state.position[0] if result.state.position else None
 
         if reached_goal or stalled:
             self.node.get_logger().info(

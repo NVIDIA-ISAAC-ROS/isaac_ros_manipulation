@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <robot xmlns:xacro="http://wiki.ros.org/xacro" name="rizon_grav">
 
+  <!--
+    Repo-local Isaac Sim/planning wrapper for Flexiv Grav.
+    The real-robot runtime description is loaded from upstream Flexiv packages.
+  -->
+
   <!-- Rizon arm planning group -->
   <group name="rizon_arm">
     <chain base_link="base_link" tip_link="flange" />
